@@ -23,6 +23,7 @@ class SoundEngine {
     clock: "/8 Ball Pool sounds/clock.mp3",
     yourTurn: "/8 Ball Pool sounds/your_turn.mp3",
     button: "/8 Ball Pool sounds/button.mp3",
+    rack: "/8 Ball Pool sounds/rack.mp3",
   };
 
   private preloadSounds() {
@@ -115,6 +116,11 @@ class SoundEngine {
   // Play UI Button Click
   public playButtonClick() {
     this.playAudio("button", 0.7);
+  }
+
+  // Play Rack Sound when match starts or re-racks
+  public playRack() {
+    this.playAudio("rack", 0.9);
   }
 }
 

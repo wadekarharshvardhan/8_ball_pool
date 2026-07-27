@@ -325,6 +325,35 @@ export class PoolRuleEngine {
 
     const shot = game.shot;
     const player = shot.player;
+
+    // SOLO PRACTICE MODE: Direct free play without Player 1 / Player 2 turn switching or fouls!
+    if (game.gameMode === "practice") {
+      if (shot.cuePocketed || shot.cueDrivenOffTable) {
+        resetCueBall(game, false);
+        game.message = "Practice: Cue ball pocketed! Ball-in-Hand granted.";
+      } else {
+        const pocketedCount = shot.pocketedNumbers.length;
+        if (pocketedCount > 0) {
+          game.message = `Practice: Pocketed ${pocketedCount} ball(s)! Great shot!`;
+        } else {
+          game.message = "Solo Practice: Direct play active. Aim and shoot!";
+        }
+      }
+
+      // Check if all 15 object balls have been cleared from the table!
+      const remainingObjectBalls = game.balls.filter((b) => !b.pocketed && b.number !== 0);
+      if (remainingObjectBalls.length === 0) {
+        game.winner = 1;
+        game.message = "🎉 Rack Cleared! Outstanding performance in Solo Practice Mode!";
+        game.shot = null;
+        return game;
+      }
+
+      game.turn = 1;
+      game.shot = null;
+      return game;
+    }
+
     const opponent = otherPlayer(player);
     const playerGroup = game.groups[player];
     const isBreakShot = game.gamePhase === "break";
