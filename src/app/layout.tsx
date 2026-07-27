@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Open_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -7,6 +7,14 @@ const openSans = Open_Sans({
   weight: ["300", "400", "500", "600", "700", "800"],
   variable: "--font-open-sans",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#080b10",
+};
 
 export const metadata: Metadata = {
   title: "8 Ball Pool - Classic Billiards",

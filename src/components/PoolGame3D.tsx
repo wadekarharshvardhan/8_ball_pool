@@ -1489,8 +1489,8 @@ export default function PoolGame3D() {
           )}
         </div>
 
-        {/* Sleek & Classic Right Controls Sidebar */}
-        <div className="grid grid-cols-2 gap-2 h-[440px] sm:h-[470px] bg-[#121824] border border-slate-800 rounded-2xl p-2 shadow-xl select-none">
+        {/* Sleek & Classic Controls Sidebar (Mobile Responsive: h-[220px] on mobile, h-[480px] on desktop) */}
+        <div className="grid grid-cols-2 gap-2 h-[220px] sm:h-[260px] lg:h-[480px] bg-[#121824] border border-slate-800 rounded-2xl p-2 shadow-xl select-none touch-none">
 
           {/* Metallic Aim Wheel Strip */}
           <div
