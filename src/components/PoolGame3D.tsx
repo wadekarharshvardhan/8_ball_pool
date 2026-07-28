@@ -177,6 +177,9 @@ export default function PoolGame3D() {
     duration: number;
   } | null>(null);
 
+  // Aim Assist / Difficulty State for 2-Player & Solo Training ("easy" | "medium" | "hard")
+  const [aimAssistLevel, setAimAssistLevel] = useState<"easy" | "medium" | "hard">("easy");
+
   // Modals
   const [showCueModal, setShowCueModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
@@ -321,42 +324,68 @@ export default function PoolGame3D() {
     }
   }, [gameState.pocketedHistory]);
 
-  // Turn Shot Clock Countdown Timer Effect
+  // 1. Turn Shot Clock Countdown Timer Decrement Effect
   useEffect(() => {
-    if (!isPlayingMatch || gameState.gameMode === "practice" || gameState.winner !== null || gameState.moving) {
+    if (
+      !isPlayingMatch ||
+      gameState.gameMode === "practice" ||
+      gameState.winner !== null ||
+      gameState.moving ||
+      (gameState.gameMode === "ai" && gameState.turn === 2)
+    ) {
       setTurnTimer(TURN_TIME_LIMIT);
       return;
     }
 
-    const interval = setInterval(() => {
+    const timerId = setInterval(() => {
       setTurnTimer((prev) => {
-        const game = gameRef.current;
-        if (game.gameMode === "practice") return TURN_TIME_LIMIT;
-
         if (prev <= 6 && prev > 1) {
           soundEngine.playTimerTick();
         }
-
-        if (prev <= 1) {
-          const timedOutPlayer = game.turn;
-          const incomingPlayer = timedOutPlayer === 1 ? 2 : 1;
-
-          game.turn = incomingPlayer;
-          game.ballInHand = true;
-          game.kitchenOnlyBallInHand = false;
-          game.message = `⏱️ Time out! Player ${timedOutPlayer} ran out of time. Turn passes to Player ${incomingPlayer} with Ball-in-Hand!`;
-          
-          soundEngine.playFoul();
-          setCueSpin({ top: 0, side: 0 });
-          setGameState({ ...game });
-          return TURN_TIME_LIMIT;
-        }
-        return prev - 1;
+        return Math.max(0, prev - 1);
       });
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => clearInterval(timerId);
   }, [isPlayingMatch, gameState.gameMode, gameState.turn, gameState.moving, gameState.winner]);
+
+  // 2. Handle Turn Clock Expiration (When turnTimer reaches 0)
+  useEffect(() => {
+    if (!isPlayingMatch || gameState.gameMode === "practice" || gameState.winner !== null || gameState.moving) {
+      return;
+    }
+    if (gameState.gameMode === "ai" && gameState.turn === 2) {
+      return;
+    }
+
+    if (turnTimer === 0) {
+      const game = gameRef.current;
+      const timedOutPlayer = game.turn;
+      const incomingPlayer = timedOutPlayer === 1 ? 2 : 1;
+
+      soundEngine.playFoul();
+      setCueSpin({ top: 0, side: 0 });
+      setIsDraggingCue(false);
+      setIsDraggingCueBall(false);
+      setPower(0);
+      powerRef.current = 0;
+
+      const timedOutName = timedOutPlayer === 1 ? "Player 1" : game.gameMode === "ai" ? "Bot" : "Player 2";
+      const incomingName = incomingPlayer === 1 ? "Player 1" : game.gameMode === "ai" ? "Bot" : "Player 2";
+
+      const updatedState: GameState = {
+        ...game,
+        turn: incomingPlayer,
+        ballInHand: true,
+        kitchenOnlyBallInHand: false,
+        message: `⏱️ Time out! ${timedOutName} ran out of time. Turn passes to ${incomingName} with Ball-in-Hand!`,
+      };
+
+      gameRef.current = updatedState;
+      setGameState(updatedState);
+      setTurnTimer(TURN_TIME_LIMIT);
+    }
+  }, [turnTimer, isPlayingMatch, gameState.gameMode, gameState.turn, gameState.moving, gameState.winner]);
 
   // AUTOMATED AI BOT TURN ENGINE EFFECT (UNINTERRUPTIBLE BY USER CLICKS)
   useEffect(() => {
@@ -764,7 +793,7 @@ export default function PoolGame3D() {
         ctx.closePath();
         ctx.fill();
 
-        // 3D Bevel Lip Highlight
+        // 3D Bevel Lip Highlight (Front cushion edge on felt)
         ctx.strokeStyle = cushionColorLip;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
@@ -772,61 +801,74 @@ export default function PoolGame3D() {
         ctx.lineTo(pts[2].x, pts[2].y);
         ctx.stroke();
 
-        // Base Shadow Edge
+        // Base Shadow Edge (Back cushion edge on wood frame)
         ctx.strokeStyle = cushionColorShadow;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
         ctx.lineTo(pts[3].x, pts[3].y);
         ctx.stroke();
+
+        // Dark Rubber/Leather Pocket Facings on Cushion Ends
+        ctx.strokeStyle = isPractice ? "#050505" : "#092e15";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        ctx.lineTo(pts[1].x, pts[1].y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(pts[2].x, pts[2].y);
+        ctx.lineTo(pts[3].x, pts[3].y);
+        ctx.stroke();
       };
 
       // 1. Top-Left Cushion
       drawCushion([
-        { x: PLAY_LEFT + 12, y: 22 },
-        { x: PLAY_LEFT + 12, y: PLAY_TOP },
-        { x: TABLE_WIDTH / 2 - 10, y: PLAY_TOP },
-        { x: TABLE_WIDTH / 2 - 10, y: 22 },
+        { x: PLAY_LEFT + 14, y: 22 },
+        { x: PLAY_LEFT + 28, y: PLAY_TOP },
+        { x: TABLE_WIDTH / 2 - 18, y: PLAY_TOP },
+        { x: TABLE_WIDTH / 2 - 32, y: 22 },
       ], { x: 0, y: 1 });
 
       // 2. Top-Right Cushion
       drawCushion([
-        { x: TABLE_WIDTH / 2 + 10, y: 22 },
-        { x: TABLE_WIDTH / 2 + 10, y: PLAY_TOP },
-        { x: PLAY_RIGHT - 12, y: PLAY_TOP },
-        { x: PLAY_RIGHT - 12, y: 22 },
+        { x: TABLE_WIDTH / 2 + 32, y: 22 },
+        { x: TABLE_WIDTH / 2 + 18, y: PLAY_TOP },
+        { x: PLAY_RIGHT - 28, y: PLAY_TOP },
+        { x: PLAY_RIGHT - 14, y: 22 },
       ], { x: 0, y: 1 });
 
       // 3. Bottom-Left Cushion
       drawCushion([
-        { x: PLAY_LEFT + 12, y: TABLE_HEIGHT - 22 },
-        { x: PLAY_LEFT + 12, y: PLAY_BOTTOM },
-        { x: TABLE_WIDTH / 2 - 10, y: PLAY_BOTTOM },
-        { x: TABLE_WIDTH / 2 - 10, y: TABLE_HEIGHT - 22 },
+        { x: PLAY_LEFT + 14, y: TABLE_HEIGHT - 22 },
+        { x: PLAY_LEFT + 28, y: PLAY_BOTTOM },
+        { x: TABLE_WIDTH / 2 - 18, y: PLAY_BOTTOM },
+        { x: TABLE_WIDTH / 2 - 32, y: TABLE_HEIGHT - 22 },
       ], { x: 0, y: -1 });
 
       // 4. Bottom-Right Cushion
       drawCushion([
-        { x: TABLE_WIDTH / 2 + 10, y: TABLE_HEIGHT - 22 },
-        { x: TABLE_WIDTH / 2 + 10, y: PLAY_BOTTOM },
-        { x: PLAY_RIGHT - 12, y: PLAY_BOTTOM },
-        { x: PLAY_RIGHT - 12, y: TABLE_HEIGHT - 22 },
+        { x: TABLE_WIDTH / 2 + 32, y: TABLE_HEIGHT - 22 },
+        { x: TABLE_WIDTH / 2 + 18, y: PLAY_BOTTOM },
+        { x: PLAY_RIGHT - 28, y: PLAY_BOTTOM },
+        { x: PLAY_RIGHT - 14, y: TABLE_HEIGHT - 22 },
       ], { x: 0, y: -1 });
 
       // 5. Left Cushion
       drawCushion([
-        { x: 22, y: PLAY_TOP + 12 },
-        { x: PLAY_LEFT, y: PLAY_TOP + 12 },
-        { x: PLAY_LEFT, y: PLAY_BOTTOM - 12 },
-        { x: 22, y: PLAY_BOTTOM - 12 },
+        { x: 22, y: PLAY_TOP + 14 },
+        { x: PLAY_LEFT, y: PLAY_TOP + 28 },
+        { x: PLAY_LEFT, y: PLAY_BOTTOM - 28 },
+        { x: 22, y: PLAY_BOTTOM - 14 },
       ], { x: 1, y: 0 });
 
       // 6. Right Cushion
       drawCushion([
-        { x: TABLE_WIDTH - 22, y: PLAY_TOP + 12 },
-        { x: PLAY_RIGHT, y: PLAY_TOP + 12 },
-        { x: PLAY_RIGHT, y: PLAY_BOTTOM - 12 },
-        { x: TABLE_WIDTH - 22, y: PLAY_BOTTOM - 12 },
+        { x: TABLE_WIDTH - 22, y: PLAY_TOP + 14 },
+        { x: PLAY_RIGHT, y: PLAY_TOP + 28 },
+        { x: PLAY_RIGHT, y: PLAY_BOTTOM - 28 },
+        { x: TABLE_WIDTH - 22, y: PLAY_BOTTOM - 14 },
       ], { x: -1, y: 0 });
 
       ctx.restore();
@@ -952,63 +994,102 @@ export default function PoolGame3D() {
         }
       });
 
-      // F. Aiming Trajectory Guide
+      // F. Aiming Trajectory Guide (Controlled by Aim Assist Level: Easy, Medium, Hard)
       const cueBall = game.balls[0];
       if (!game.moving && game.winner === null && !cueBall.pocketed) {
-        const traj = calculateAimTrajectory(game);
+        if (aimAssistLevel !== "hard") {
+          const traj = calculateAimTrajectory(game);
 
-        let isIllegalContact = false;
-        if (traj.hasCollision && traj.targetBallNumber !== null && game.tableState === "assigned" && playerGroup !== null) {
-          const targetGroup = getGroup(traj.targetBallNumber);
-          const isPlayerOn8Ball = countGroupBalls(game, playerGroup) === 0;
+          let isIllegalContact = false;
+          if (traj.hasCollision && traj.targetBallNumber !== null && game.tableState === "assigned" && playerGroup !== null) {
+            const targetGroup = getGroup(traj.targetBallNumber);
+            const isPlayerOn8Ball = countGroupBalls(game, playerGroup) === 0;
 
-          if (isPlayerOn8Ball) {
-            if (traj.targetBallNumber !== 8) isIllegalContact = true;
-          } else {
-            if (targetGroup !== playerGroup) isIllegalContact = true;
+            if (isPlayerOn8Ball) {
+              if (traj.targetBallNumber !== 8) isIllegalContact = true;
+            } else {
+              if (targetGroup !== playerGroup) isIllegalContact = true;
+            }
           }
-        }
 
-        ctx.save();
-        ctx.strokeStyle = isIllegalContact ? "#ef4444" : "rgba(255, 255, 255, 0.9)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 5]);
-        ctx.beginPath();
-        ctx.moveTo(traj.cueX, traj.cueY);
-        ctx.lineTo(traj.ghostX, traj.ghostY);
-        ctx.stroke();
+          ctx.save();
 
-        ctx.setLineDash([]);
-        ctx.strokeStyle = isIllegalContact ? "#ef4444" : "#ffffff";
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.arc(traj.ghostX, traj.ghostY, BALL_RADIUS, 0, Math.PI * 2);
-        ctx.stroke();
-
-        if (traj.hasCollision) {
-          if (isIllegalContact) {
-            ctx.fillStyle = "#ef4444";
-            ctx.font = "800 13px var(--font-plus-jakarta), sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("🚫 FOUL TARGET", traj.ghostX, traj.ghostY - BALL_RADIUS - 8);
-          } else {
-            ctx.strokeStyle = "#facc15";
+          if (aimAssistLevel === "easy") {
+            // EASY MODE: FULL AIM ASSIST (Full Cue Line, Extended Target Line, Cue Deflection, Ghost Ball, Foul Warning)
+            ctx.strokeStyle = isIllegalContact ? "#ef4444" : "rgba(255, 255, 255, 0.9)";
             ctx.lineWidth = 2;
+            ctx.setLineDash([6, 5]);
             ctx.beginPath();
-            ctx.moveTo(traj.ghostX, traj.ghostY);
-            ctx.lineTo(traj.ghostX + traj.targetDirX * 100, traj.ghostY + traj.targetDirY * 100);
+            ctx.moveTo(traj.cueX, traj.cueY);
+            ctx.lineTo(traj.ghostX, traj.ghostY);
             ctx.stroke();
 
-            ctx.strokeStyle = "#38bdf8";
+            ctx.setLineDash([]);
+            ctx.strokeStyle = isIllegalContact ? "#ef4444" : "#ffffff";
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.arc(traj.ghostX, traj.ghostY, BALL_RADIUS, 0, Math.PI * 2);
+            ctx.stroke();
+
+            if (traj.hasCollision) {
+              if (isIllegalContact) {
+                ctx.fillStyle = "#ef4444";
+                ctx.font = "800 13px var(--font-plus-jakarta), sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("🚫 FOUL TARGET", traj.ghostX, traj.ghostY - BALL_RADIUS - 8);
+              } else {
+                ctx.strokeStyle = "#facc15";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(traj.ghostX, traj.ghostY);
+                ctx.lineTo(traj.ghostX + traj.targetDirX * 240, traj.ghostY + traj.targetDirY * 240);
+                ctx.stroke();
+
+                ctx.strokeStyle = "#38bdf8";
+                ctx.lineWidth = 1.8;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(traj.ghostX, traj.ghostY);
+                ctx.lineTo(traj.ghostX + traj.cueDeflectX * 70, traj.ghostY + traj.cueDeflectY * 70);
+                ctx.stroke();
+              }
+            }
+          } else if (aimAssistLevel === "medium") {
+            // MEDIUM MODE: REDUCED AIM ASSIST (Short 80px Cue Line, Thin Ghost Ball, Short 40px Target Indicator)
+            const dx = traj.ghostX - traj.cueX;
+            const dy = traj.ghostY - traj.cueY;
+            const dist = Math.hypot(dx, dy);
+            const maxLineLen = Math.min(80, dist);
+            const dirX = dist > 0 ? dx / dist : 0;
+            const dirY = dist > 0 ? dy / dist : 0;
+
+            ctx.strokeStyle = isIllegalContact ? "#ef4444" : "rgba(255, 255, 255, 0.65)";
             ctx.lineWidth = 1.8;
             ctx.setLineDash([4, 4]);
             ctx.beginPath();
-            ctx.moveTo(traj.ghostX, traj.ghostY);
-            ctx.lineTo(traj.ghostX + traj.cueDeflectX * 70, traj.ghostY + traj.cueDeflectY * 70);
+            ctx.moveTo(traj.cueX, traj.cueY);
+            ctx.lineTo(traj.cueX + dirX * maxLineLen, traj.cueY + dirY * maxLineLen);
             ctx.stroke();
+
+            ctx.setLineDash([]);
+            ctx.strokeStyle = isIllegalContact ? "#ef4444" : "rgba(255, 255, 255, 0.5)";
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(traj.ghostX, traj.ghostY, BALL_RADIUS, 0, Math.PI * 2);
+            ctx.stroke();
+
+            if (traj.hasCollision && !isIllegalContact) {
+              ctx.strokeStyle = "rgba(250, 204, 21, 0.85)";
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.moveTo(traj.ghostX, traj.ghostY);
+              ctx.lineTo(traj.ghostX + traj.targetDirX * 40, traj.ghostY + traj.targetDirY * 40);
+              ctx.stroke();
+            }
           }
+
+          ctx.restore();
         }
-        ctx.restore();
 
         // G. High Precision Cue Stick Render
         ctx.save();
@@ -1310,10 +1391,10 @@ export default function PoolGame3D() {
             </div>
 
             <div className="space-y-2">
-              <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white drop-shadow-xl flex items-center justify-center gap-3">
+              <h1 className="text-5xl sm:text-7xl font-normal font-bebas tracking-wider text-white drop-shadow-2xl flex items-center justify-center gap-3">
                 8 BALL <span className="bg-clip-text text-transparent bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500">POOL</span>
               </h1>
-              <p className="text-sm sm:text-base text-slate-400 font-bold flex items-center justify-center gap-1.5">
+              <p className="text-sm sm:text-base text-slate-200 font-extrabold font-sans uppercase tracking-wider flex items-center justify-center gap-2 drop-shadow-md">
                 <Sparkles className="w-4 h-4 text-amber-400" /> The Classic World Class Billiards Experience
               </p>
             </div>
@@ -1335,8 +1416,8 @@ export default function PoolGame3D() {
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 border-b-4 border-amber-700 text-slate-950 shadow-md font-black">
                 <Users className="w-6 h-6 stroke-[2.5]" />
               </div>
-              <div className="font-black text-base text-white">2 Players (PvP)</div>
-              <div className="text-xs text-slate-400 font-semibold">Pass & Play Local</div>
+              <div className="font-bebas font-normal text-2xl text-white tracking-wider">2 Players (PvP)</div>
+              <div className="text-xs text-slate-200 font-extrabold font-sans">Pass & Play Local</div>
             </button>
 
             <button
@@ -1353,8 +1434,8 @@ export default function PoolGame3D() {
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-emerald-400 to-emerald-500 border-b-4 border-emerald-700 text-slate-950 shadow-md font-black">
                 <Target className="w-6 h-6 stroke-[2.5]" />
               </div>
-              <div className="font-black text-base text-white">Solo Practice</div>
-              <div className="text-xs text-slate-400 font-semibold">Free Training</div>
+              <div className="font-bebas font-normal text-2xl text-white tracking-wider">Solo Practice</div>
+              <div className="text-xs text-slate-200 font-extrabold font-sans">Free Training</div>
             </button>
 
             <button
@@ -1372,19 +1453,72 @@ export default function PoolGame3D() {
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-indigo-500 to-indigo-600 border-b-4 border-indigo-800 text-white shadow-md font-black">
                 <Bot className="w-6 h-6 stroke-[2.5]" />
               </div>
-              <div className="font-black text-base text-white">Vs AI Bot</div>
-              <div className="text-xs text-slate-400 font-semibold">
+              <div className="font-bebas font-normal text-2xl text-white tracking-wider">Vs AI Bot</div>
+              <div className="text-xs text-slate-200 font-extrabold font-sans">
                 Mode: <span className="capitalize font-black text-amber-400">{selectedAIDifficulty}</span>
               </div>
             </button>
           </div>
 
+          {/* Aim Assist / Difficulty Selection Widget for Player Aiming */}
+          <div className="flex flex-col items-center gap-2.5 w-full max-w-lg bg-gradient-to-b from-slate-900/90 to-slate-950/90 p-4 rounded-2xl border border-slate-700/70 shadow-xl my-1">
+            <div className="flex items-center gap-2 font-bebas text-base uppercase text-amber-400 tracking-widest drop-shadow-md">
+              <Zap className="w-4 h-4 text-amber-400 fill-amber-400" /> Player Aim Assist Mode (PvP & Solo)
+            </div>
+            <div className="grid grid-cols-3 gap-2.5 w-full">
+              <button
+                onClick={() => {
+                  soundEngine.playButtonClick();
+                  setAimAssistLevel("easy");
+                }}
+                className={`py-3 px-3 rounded-xl border-b-4 font-black text-xs transition flex flex-col items-center gap-1 shadow-md ${
+                  aimAssistLevel === "easy"
+                    ? "bg-gradient-to-b from-emerald-500 to-emerald-600 border-emerald-800 text-slate-950 ring-2 ring-emerald-400/60 scale-105"
+                    : "bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-1 font-bebas font-normal text-lg text-white drop-shadow">🟢 Easy</div>
+                <div className="text-xs text-slate-100 font-extrabold font-sans tracking-wide">Full Assist</div>
+              </button>
+
+              <button
+                onClick={() => {
+                  soundEngine.playButtonClick();
+                  setAimAssistLevel("medium");
+                }}
+                className={`py-3 px-3 rounded-xl border-b-4 font-black text-xs transition flex flex-col items-center gap-1 shadow-md ${
+                  aimAssistLevel === "medium"
+                    ? "bg-gradient-to-b from-amber-400 to-amber-500 border-amber-700 text-slate-950 ring-2 ring-amber-400/60 scale-105"
+                    : "bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-1 font-bebas font-normal text-lg text-white drop-shadow">🟡 Medium</div>
+                <div className="text-xs text-slate-100 font-extrabold font-sans tracking-wide">Short Guide</div>
+              </button>
+
+              <button
+                onClick={() => {
+                  soundEngine.playButtonClick();
+                  setAimAssistLevel("hard");
+                }}
+                className={`py-3 px-3 rounded-xl border-b-4 font-black text-xs transition flex flex-col items-center gap-1 shadow-md ${
+                  aimAssistLevel === "hard"
+                    ? "bg-gradient-to-b from-rose-500 to-rose-600 border-rose-800 text-white ring-2 ring-rose-400/60 scale-105"
+                    : "bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-1 font-bebas font-normal text-lg text-white drop-shadow">🔴 Hard</div>
+                <div className="text-xs text-slate-100 font-extrabold font-sans tracking-wide">No Assist</div>
+              </button>
+            </div>
+          </div>
+
           {/* ULTRA MASSIVE 3D SOLID START GAME BUTTON */}
           <button
             onClick={() => handleStartMatch(selectedGameMode)}
-            className="group relative inline-flex items-center justify-center gap-3.5 px-14 py-5 rounded-2xl bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-b-6 border-amber-700 text-slate-950 font-black text-2xl tracking-widest uppercase shadow-[0_12px_40px_rgba(245,158,11,0.5)] hover:shadow-[0_16px_50px_rgba(245,158,11,0.8)] hover:from-amber-300 hover:to-amber-400 active:border-b-0 active:translate-y-1.5 transition-all duration-150 transform hover:-translate-y-0.5"
+            className="group relative inline-flex items-center justify-center gap-3.5 px-16 py-4.5 rounded-2xl bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-b-6 border-amber-700 text-slate-950 font-bebas font-normal text-3xl sm:text-4xl tracking-widest uppercase shadow-[0_12px_40px_rgba(245,158,11,0.5)] hover:shadow-[0_16px_50px_rgba(245,158,11,0.8)] hover:from-amber-300 hover:to-amber-400 active:border-b-0 active:translate-y-1.5 transition-all duration-150 transform hover:-translate-y-0.5"
           >
-            <Play className="w-7 h-7 fill-slate-950 stroke-none" />
+            <Play className="w-8 h-8 fill-slate-950 stroke-none" />
             START GAME
           </button>
 
@@ -1479,7 +1613,7 @@ export default function PoolGame3D() {
   // GAME MATCH POOL TABLE VIEW
   // ----------------------------------------------------
   return (
-    <div className="flex flex-col gap-3 w-full max-w-7xl mx-auto px-2 sm:px-4 py-3 select-none bg-[#090d14] text-slate-100 rounded-3xl p-4 border border-slate-800 shadow-2xl font-sans">
+    <div className="flex flex-col gap-4 w-full max-w-[1360px] mx-auto px-3 sm:px-6 py-4 select-none bg-gradient-to-b from-[#141d2d] via-[#0f1522] to-[#090d16] text-slate-100 rounded-[2.5rem] border-b-8 border-r-4 border-slate-800/90 shadow-[0_30px_90px_rgba(0,0,0,0.9)] font-sans overflow-hidden">
       <style>{`
         @keyframes rollIntoRack {
           0% {
@@ -1503,103 +1637,104 @@ export default function PoolGame3D() {
       {/* ---------------------------------------------------- */}
       {/* 1. 3D SOLID COLORFUL HEADER SCOREBOARD & TOOLBAR    */}
       {/* ---------------------------------------------------- */}
-      <header className="flex flex-col lg:flex-row items-center justify-between gap-4 rounded-3xl bg-gradient-to-b from-[#161f30] via-[#111724] to-[#0c101a] border-b-4 border-slate-800/90 p-4 sm:p-5 shadow-2xl">
+      <header className="flex flex-col gap-3.5 rounded-3xl bg-gradient-to-b from-[#182338] via-[#121929] to-[#0d121f] border-b-4 border-slate-800/90 p-4 sm:p-5 shadow-2xl overflow-hidden">
         
-        {/* Player 1 Info Card / Solo Practice Badge */}
-        {gameState.gameMode === "practice" ? (
-          <div className="flex items-center gap-3 bg-gradient-to-b from-slate-900 to-slate-950 p-3 rounded-2xl border-b-4 border-slate-800 shadow-lg">
-            <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 border-b-4 border-amber-700 text-slate-950 font-black shadow-md">
-              <Target className="w-6 h-6 stroke-[2.5]" />
-            </div>
-            <div>
-              <div className="font-extrabold text-white text-base">Solo Practice Mode</div>
-              <div className="text-xs text-slate-400 font-medium">
-                Free Direct Play • <span className="text-amber-400 font-bold">{gameState.balls.filter((b) => !b.pocketed && b.number !== 0).length}</span> balls left
+        {/* Row 1: Player Scorecards & Pocketed Ball Return Rack */}
+        <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+          {/* Player 1 Info Card / Solo Practice Badge */}
+          {gameState.gameMode === "practice" ? (
+            <div className="flex items-center gap-3 bg-gradient-to-b from-slate-900 to-slate-950 p-3 rounded-2xl border-b-4 border-slate-800 shadow-lg">
+              <div className="flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 border-b-4 border-amber-700 text-slate-950 font-black shadow-md">
+                <Target className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div>
+                <div className="font-extrabold text-white text-base">Solo Practice Mode</div>
+                <div className="text-xs text-slate-400 font-medium">
+                  Free Direct Play • <span className="text-amber-400 font-bold">{gameState.balls.filter((b) => !b.pocketed && b.number !== 0).length}</span> balls left
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3.5 w-full lg:w-auto">
-            <div className="relative flex items-center justify-center">
-              {gameState.turn === 1 && !gameState.moving && (
-                <svg className="absolute -inset-1.5 w-15 h-15 transform -rotate-90 pointer-events-none z-10">
-                  <circle cx="30" cy="30" r="21" stroke="#1e293b" strokeWidth="4" fill="transparent" />
-                  <circle
-                    cx="30"
-                    cy="30"
-                    r="21"
-                    stroke="#22c55e"
-                    strokeWidth="4"
-                    strokeDasharray="132"
-                    strokeDashoffset={132 * (1 - timerRatio)}
-                    className="transition-all duration-1000"
-                    fill="transparent"
-                  />
-                </svg>
-              )}
-              <div
-                className={`flex items-center justify-center w-12 h-12 rounded-2xl border-b-4 shadow-lg transition-all duration-300 ${
-                  gameState.turn === 1
-                    ? "bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-600 border-emerald-800 text-slate-950 shadow-emerald-950/60 ring-4 ring-emerald-400/40 scale-105"
-                    : "bg-gradient-to-b from-slate-800 to-slate-900 border-slate-700 text-slate-400 opacity-70"
-                }`}
-              >
-                <User className="w-6 h-6 stroke-[2.5]" />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-white text-base tracking-wide">Player 1</span>
-                {gameState.turn === 1 && (
-                  <span className="px-2.5 py-0.5 text-xs font-black bg-gradient-to-b from-emerald-400 to-emerald-500 border-b-2 border-emerald-700 text-slate-950 rounded-lg shadow-md animate-pulse">
-                    {turnTimer}s
-                  </span>
+          ) : (
+            <div className="flex items-center gap-3.5">
+              <div className="relative flex items-center justify-center">
+                {gameState.turn === 1 && !gameState.moving && (
+                  <svg className="absolute -inset-1.5 w-15 h-15 transform -rotate-90 pointer-events-none z-10">
+                    <circle cx="30" cy="30" r="21" stroke="#1e293b" strokeWidth="4" fill="transparent" />
+                    <circle
+                      cx="30"
+                      cy="30"
+                      r="21"
+                      stroke="#22c55e"
+                      strokeWidth="4"
+                      strokeDasharray="132"
+                      strokeDashoffset={132 * (1 - timerRatio)}
+                      className="transition-all duration-1000"
+                      fill="transparent"
+                    />
+                  </svg>
                 )}
+                <div
+                  className={`flex items-center justify-center w-12 h-12 rounded-2xl border-b-4 shadow-lg transition-all duration-300 ${
+                    gameState.turn === 1
+                      ? "bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-600 border-emerald-800 text-slate-950 shadow-emerald-950/60 ring-4 ring-emerald-400/40 scale-105"
+                      : "bg-gradient-to-b from-slate-800 to-slate-900 border-slate-700 text-slate-400 opacity-70"
+                  }`}
+                >
+                  <User className="w-6 h-6 stroke-[2.5]" />
+                </div>
               </div>
-              <div className="text-xs text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
-                Group:{" "}
-                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold uppercase text-[11px]">
-                  {gameState.groups[1] ?? "Unassigned"}
-                </span>{" "}
-                (<strong className="text-white">{countGroupBalls(gameState, gameState.groups[1] ?? "solids")}</strong> left)
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-white text-base tracking-wide">Player 1</span>
+                  {gameState.turn === 1 && (
+                    <span className="px-2.5 py-0.5 text-xs font-black bg-gradient-to-b from-emerald-400 to-emerald-500 border-b-2 border-emerald-700 text-slate-950 rounded-lg shadow-md animate-pulse">
+                      {turnTimer}s
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
+                  Group:{" "}
+                  <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold uppercase text-[11px]">
+                    {gameState.groups[1] ?? "Unassigned"}
+                  </span>{" "}
+                  (<strong className="text-white">{countGroupBalls(gameState, gameState.groups[1] ?? "solids")}</strong> left)
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Center 3D Metallic Ball Return Rack */}
-        <div className="flex flex-col items-center gap-1.5 px-6 py-2.5 rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-b-4 border-slate-800 shadow-xl border-t border-slate-700/50">
-          <div className="text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-950/40 px-3 py-0.5 rounded-full border border-amber-500/30 shadow-inner flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-amber-400" /> Pocketed Ball Return
+          {/* Center 3D Metallic Ball Return Rack */}
+          <div className="flex flex-col items-center gap-1.5 px-6 py-2 rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-b-4 border-slate-800 shadow-xl border-t border-slate-700/50 mx-auto">
+            <div className="text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-950/40 px-3 py-0.5 rounded-full border border-amber-500/30 shadow-inner flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-amber-400" /> Pocketed Ball Return
+            </div>
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-b from-black via-slate-950 to-slate-900 border-2 border-slate-700/80 shadow-inner min-w-[200px] max-w-[300px] overflow-x-auto">
+              {gameState.pocketedHistory.length === 0 ? (
+                <span className="text-xs text-slate-500 italic mx-auto font-medium">Rack Empty</span>
+              ) : (
+                gameState.pocketedHistory.map((num, idx) => {
+                  const sprite = ballSpritesRef.current.get(num);
+                  const isLatest = idx === gameState.pocketedHistory.length - 1;
+                  return (
+                    <div
+                      key={`${num}-${idx}`}
+                      className={`w-6 h-6 rounded-full ring-2 ring-white/40 shadow-md shrink-0 overflow-hidden ${isLatest ? "animate-roll-in" : ""}`}
+                    >
+                      {sprite ? (
+                        <img src={sprite.toDataURL()} alt={`Ball ${num}`} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[10px] text-white font-bold">{num}</span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-b from-black via-slate-950 to-slate-900 border-2 border-slate-700/80 shadow-inner min-w-[220px] max-w-[320px] overflow-x-auto">
-            {gameState.pocketedHistory.length === 0 ? (
-              <span className="text-xs text-slate-500 italic mx-auto font-medium">Rack Empty</span>
-            ) : (
-              gameState.pocketedHistory.map((num, idx) => {
-                const sprite = ballSpritesRef.current.get(num);
-                const isLatest = idx === gameState.pocketedHistory.length - 1;
-                return (
-                  <div
-                    key={`${num}-${idx}`}
-                    className={`w-6 h-6 rounded-full ring-2 ring-white/40 shadow-md shrink-0 overflow-hidden ${isLatest ? "animate-roll-in" : ""}`}
-                  >
-                    {sprite ? (
-                      <img src={sprite.toDataURL()} alt={`Ball ${num}`} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-[10px] text-white font-bold">{num}</span>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
 
-        {/* Player 2 Card & Integrated Action Toolbar */}
-        <div className="flex items-center gap-4 w-full lg:w-auto justify-end">
+          {/* Player 2 Card */}
           {gameState.gameMode !== "practice" && (
-            <>
+            <div className="flex items-center gap-3.5">
               <div className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   {gameState.turn === 2 && (
@@ -1646,83 +1781,105 @@ export default function PoolGame3D() {
                   {gameState.gameMode === "ai" ? <Bot className="w-6 h-6 stroke-[2.5]" /> : <User className="w-6 h-6 stroke-[2.5]" />}
                 </div>
               </div>
-            </>
+            </div>
           )}
+        </div>
 
-          {/* 3D Solid Colorful Action Toolbar */}
-          <div className="flex items-center gap-2 sm:gap-2.5 pl-2 sm:pl-3 border-l-2 border-slate-800/80">
-            <button
-              onClick={handleReturnToMenu}
-              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-b-4 border-amber-700 text-slate-950 shadow-lg shadow-amber-950/40 hover:from-amber-300 hover:to-amber-400 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center"
-              title="Main Menu"
-            >
-              <HomeIcon className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-            </button>
+        {/* Row 2: 3D Action Toolbar (Fits all 8 action buttons perfectly) */}
+        <div className="flex items-center justify-center flex-wrap gap-2 sm:gap-3 pt-3 border-t border-slate-800/80 w-full">
+          <button
+            onClick={handleReturnToMenu}
+            className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-b-4 border-amber-700 text-slate-950 shadow-lg shadow-amber-950/40 hover:from-amber-300 hover:to-amber-400 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5 text-xs font-black px-3.5"
+            title="Main Menu"
+          >
+            <HomeIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />
+            <span className="hidden sm:inline">Menu</span>
+          </button>
 
-            <button
-              onClick={() => setMuted(soundEngine.toggleMute())}
-              className={`p-3 sm:p-3.5 rounded-2xl border-b-4 shadow-lg active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center ${
-                muted
-                  ? "bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-rose-800 text-white shadow-rose-950/40 hover:from-rose-400 hover:to-rose-500"
-                  : "bg-gradient-to-b from-emerald-400 via-emerald-400 to-emerald-500 border-emerald-700 text-slate-950 shadow-emerald-950/40 hover:from-emerald-300 hover:to-emerald-400"
-              }`}
-              title="Toggle Sound"
-            >
-              {muted ? <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" /> : <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />}
-            </button>
+          <button
+            onClick={() => setMuted(soundEngine.toggleMute())}
+            className={`p-2.5 sm:p-3 rounded-2xl border-b-4 shadow-lg active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5 text-xs font-black px-3.5 ${
+              muted
+                ? "bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-rose-800 text-white shadow-rose-950/40 hover:from-rose-400 hover:to-rose-500"
+                : "bg-gradient-to-b from-emerald-400 via-emerald-400 to-emerald-500 border-emerald-700 text-slate-950 shadow-emerald-950/40 hover:from-emerald-300 hover:to-emerald-400"
+            }`}
+            title="Toggle Sound"
+          >
+            {muted ? <VolumeX className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" /> : <Volume2 className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />}
+            <span className="hidden sm:inline">{muted ? "Muted" : "Sound"}</span>
+          </button>
 
-            <button
-              onClick={() => handleStartMatch()}
-              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-sky-400 via-sky-400 to-sky-500 border-b-4 border-sky-700 text-slate-950 shadow-lg shadow-sky-950/40 hover:from-sky-300 hover:to-sky-400 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center"
-              title="Reset Rack"
-            >
-              <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-            </button>
+          <button
+            onClick={() => handleStartMatch()}
+            className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-sky-400 via-sky-400 to-sky-500 border-b-4 border-sky-700 text-slate-950 shadow-lg shadow-sky-950/40 hover:from-sky-300 hover:to-sky-400 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5 text-xs font-black px-3.5"
+            title="Reset Rack"
+          >
+            <RotateCcw className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />
+            <span className="hidden sm:inline">Reset</span>
+          </button>
 
-            <button
-              onClick={() => {
-                soundEngine.playButtonClick();
-                setShowSpinModal(!showSpinModal);
-              }}
-              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-b-4 border-rose-800 text-white shadow-lg shadow-rose-950/40 hover:from-rose-400 hover:to-rose-500 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center relative"
-              title="Cue Spin"
-            >
-              <Target className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-              {(cueSpin.top !== 0 || cueSpin.side !== 0) && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-slate-950 animate-ping" />
-              )}
-            </button>
+          <button
+            onClick={() => {
+              soundEngine.playButtonClick();
+              setShowSpinModal(!showSpinModal);
+            }}
+            className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-b-4 border-rose-800 text-white shadow-lg shadow-rose-950/40 hover:from-rose-400 hover:to-rose-500 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5 text-xs font-black px-3.5 relative"
+            title="Cue Spin"
+          >
+            <Target className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />
+            <span className="hidden sm:inline">Spin</span>
+            {(cueSpin.top !== 0 || cueSpin.side !== 0) && (
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-slate-950 animate-ping" />
+            )}
+          </button>
 
-            <button
-              onClick={() => {
-                soundEngine.playButtonClick();
-                setShowThemeModal(true);
-              }}
-              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-fuchsia-500 via-fuchsia-500 to-fuchsia-600 border-b-4 border-fuchsia-800 text-white shadow-lg shadow-fuchsia-950/40 hover:from-fuchsia-400 hover:to-fuchsia-500 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center"
-              title="Ball Designs"
-            >
-              <Disc className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-            </button>
+          <button
+            onClick={() => {
+              soundEngine.playButtonClick();
+              setShowThemeModal(true);
+            }}
+            className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-fuchsia-500 via-fuchsia-500 to-fuchsia-600 border-b-4 border-fuchsia-800 text-white shadow-lg shadow-fuchsia-950/40 hover:from-fuchsia-400 hover:to-fuchsia-500 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5 text-xs font-black px-3.5"
+            title="Ball Designs"
+          >
+            <Disc className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />
+            <span className="hidden sm:inline">Balls</span>
+          </button>
 
-            <button
-              onClick={() => {
-                soundEngine.playButtonClick();
-                setShowCueModal(true);
-              }}
-              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-indigo-500 via-indigo-500 to-indigo-600 border-b-4 border-indigo-800 text-white shadow-lg shadow-indigo-950/40 hover:from-indigo-400 hover:to-indigo-500 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center"
-              title="Cue Shop"
-            >
-              <Palette className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-            </button>
+          <button
+            onClick={() => {
+              soundEngine.playButtonClick();
+              setShowCueModal(true);
+            }}
+            className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-indigo-500 via-indigo-500 to-indigo-600 border-b-4 border-indigo-800 text-white shadow-lg shadow-indigo-950/40 hover:from-indigo-400 hover:to-indigo-500 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5 text-xs font-black px-3.5"
+            title="Cue Shop"
+          >
+            <Palette className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />
+            <span className="hidden sm:inline">Cues</span>
+          </button>
 
-            <button
-              onClick={() => setShowHelpModal(true)}
-              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-teal-400 via-teal-400 to-teal-500 border-b-4 border-teal-700 text-slate-950 shadow-lg shadow-teal-950/40 hover:from-teal-300 hover:to-teal-400 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center"
-              title="Rules"
-            >
-              <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
-            </button>
+          {/* Read-Only Aim Assist Status Indicator Badge (Locked during match) */}
+          <div
+            className={`p-2.5 sm:p-3 rounded-2xl border-b-4 shadow-lg flex items-center justify-center gap-1.5 text-xs font-black px-3.5 cursor-default ${
+              aimAssistLevel === "easy"
+                ? "bg-gradient-to-b from-emerald-400 via-emerald-400 to-emerald-500 border-emerald-700 text-slate-950 shadow-emerald-950/40"
+                : aimAssistLevel === "medium"
+                ? "bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-amber-700 text-slate-950 shadow-amber-950/40"
+                : "bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-rose-800 text-white shadow-rose-950/40"
+            }`}
+            title={`Aim Assist Level: ${aimAssistLevel.toUpperCase()} (Selected before match start)`}
+          >
+            <Zap className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />
+            <span className="capitalize">{aimAssistLevel}</span>
           </div>
+
+          <button
+            onClick={() => setShowHelpModal(true)}
+            className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-teal-400 via-teal-400 to-teal-500 border-b-4 border-teal-700 text-slate-950 shadow-lg shadow-teal-950/40 hover:from-teal-300 hover:to-teal-400 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5 text-xs font-black px-3.5"
+            title="Rules"
+          >
+            <HelpCircle className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />
+            <span className="hidden sm:inline">Rules</span>
+          </button>
         </div>
       </header>
 
@@ -1764,22 +1921,33 @@ export default function PoolGame3D() {
 
           {/* Cue Spin Selector Modal Overlay */}
           {showSpinModal && (
-            <div className="absolute top-3 right-3 z-20 flex flex-col items-center gap-2 p-3 rounded-2xl bg-slate-950/95 border border-slate-800 shadow-2xl backdrop-blur-md">
-              <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-bold text-slate-200">Cue Spin</span>
-                <button onClick={() => setShowSpinModal(false)} className="text-xs text-slate-400 hover:text-white">✕</button>
+            <div className="absolute top-3 right-3 z-20 flex flex-col items-center gap-2.5 p-3.5 rounded-2xl bg-slate-950/95 border-2 border-slate-700 shadow-2xl backdrop-blur-md">
+              <div className="flex items-center justify-between w-full gap-3">
+                <span className="text-xs font-black text-amber-400 font-bebas uppercase tracking-wider flex items-center gap-1">
+                  <Target className="w-3.5 h-3.5 text-amber-400" /> Cue Spin
+                </span>
+                <button onClick={() => setShowSpinModal(false)} className="text-xs text-slate-400 hover:text-white font-bold">✕</button>
               </div>
 
               <div
-                onPointerDown={handleSpinPointerMove}
+                onPointerDown={(e) => {
+                  handleSpinPointerMove(e);
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                }}
                 onPointerMove={(e) => e.buttons === 1 && handleSpinPointerMove(e)}
-                className="relative w-24 h-24 rounded-full bg-slate-200 border-2 border-slate-700 cursor-crosshair flex items-center justify-center"
+                onPointerUp={() => {
+                  soundEngine.playButtonClick();
+                  setShowSpinModal(false);
+                }}
+                className="relative w-28 h-28 rounded-full bg-gradient-to-br from-slate-200 via-white to-slate-300 border-4 border-slate-700 shadow-inner cursor-crosshair flex items-center justify-center"
               >
-                <div className="absolute w-full h-0.5 bg-slate-400/40" />
-                <div className="absolute h-full w-0.5 bg-slate-400/40" />
+                {/* Crosshair guide lines */}
+                <div className="absolute w-full h-0.5 bg-slate-400/50" />
+                <div className="absolute h-full w-0.5 bg-slate-400/50" />
 
+                {/* Red dot indicator */}
                 <div
-                  className="absolute w-4 h-4 rounded-full bg-red-600 border border-white shadow transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                  className="absolute w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow-md transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                   style={{
                     left: `${50 + cueSpin.side * 40}%`,
                     top: `${50 - cueSpin.top * 40}%`,
@@ -1787,12 +1955,26 @@ export default function PoolGame3D() {
                 />
               </div>
 
-              <button
-                onClick={() => setCueSpin({ top: 0, side: 0 })}
-                className="px-2.5 py-0.5 bg-slate-800 text-slate-300 text-[10px] font-semibold rounded border border-slate-700"
-              >
-                Reset
-              </button>
+              <div className="flex items-center gap-2 w-full">
+                <button
+                  onClick={() => {
+                    setCueSpin({ top: 0, side: 0 });
+                    setShowSpinModal(false);
+                  }}
+                  className="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold rounded-xl border border-slate-700 shadow"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={() => {
+                    soundEngine.playButtonClick();
+                    setShowSpinModal(false);
+                  }}
+                  className="flex-1 py-1.5 px-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[10px] font-black rounded-xl border border-emerald-600 shadow"
+                >
+                  Set Spin
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1891,6 +2073,7 @@ export default function PoolGame3D() {
       </footer>
 
       {/* MODALS */}
+
       {showThemeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
           <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-5 text-white space-y-4">

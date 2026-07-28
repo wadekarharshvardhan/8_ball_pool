@@ -84,15 +84,17 @@ export function stepPhysics(game: GameState, subSteps = 12): boolean {
         const dy = pocket.y - ball.y;
         const dist = Math.hypot(dx, dy);
 
-        const captureRadius = pocket.radius + 8;
+        // Corner pockets (0, 2, 3, 5) need slightly wider capture radius from mouth entry
+        const isCorner = pocket.id !== 1 && pocket.id !== 4;
+        const captureRadius = pocket.radius + (isCorner ? 14 : 10);
 
         if (dist < captureRadius) {
           suckedIntoPocket = true;
-          const pullFactor = 0.55;
+          const pullFactor = isCorner ? 0.75 : 0.70;
           ball.vx += (dx / dist) * pullFactor;
           ball.vy += (dy / dist) * pullFactor;
 
-          if (dist < pocket.radius * 0.9) {
+          if (dist < pocket.radius * 0.98) {
             ball.pocketed = true;
             ball.vx = 0;
             ball.vy = 0;
@@ -123,7 +125,7 @@ export function stepPhysics(game: GameState, subSteps = 12): boolean {
       if (ball.pocketed) return;
 
       // DETECT BALL DRIVEN OFF TABLE BOUNDARIES
-      if (ball.x < 12 || ball.x > TABLE_WIDTH - 12 || ball.y < 12 || ball.y > TABLE_HEIGHT - 12) {
+      if (ball.x < 10 || ball.x > TABLE_WIDTH - 10 || ball.y < 10 || ball.y > TABLE_HEIGHT - 10) {
         ball.pocketed = true;
         ball.vx = 0;
         ball.vy = 0;
@@ -148,23 +150,23 @@ export function stepPhysics(game: GameState, subSteps = 12): boolean {
       if (!suckedIntoPocket) {
         const POCKET_JAWS = [
           // Top-Left Pocket (0)
-          { x: PLAY_LEFT + 12, y: PLAY_TOP },
-          { x: PLAY_LEFT, y: PLAY_TOP + 12 },
+          { x: PLAY_LEFT + 28, y: PLAY_TOP },
+          { x: PLAY_LEFT, y: PLAY_TOP + 28 },
           // Top-Center Pocket (1)
-          { x: TABLE_WIDTH / 2 - 10, y: PLAY_TOP },
-          { x: TABLE_WIDTH / 2 + 10, y: PLAY_TOP },
+          { x: TABLE_WIDTH / 2 - 18, y: PLAY_TOP },
+          { x: TABLE_WIDTH / 2 + 18, y: PLAY_TOP },
           // Top-Right Pocket (2)
-          { x: PLAY_RIGHT - 12, y: PLAY_TOP },
-          { x: PLAY_RIGHT, y: PLAY_TOP + 12 },
+          { x: PLAY_RIGHT - 28, y: PLAY_TOP },
+          { x: PLAY_RIGHT, y: PLAY_TOP + 28 },
           // Bottom-Left Pocket (3)
-          { x: PLAY_LEFT + 12, y: PLAY_BOTTOM },
-          { x: PLAY_LEFT, y: PLAY_BOTTOM - 12 },
+          { x: PLAY_LEFT + 28, y: PLAY_BOTTOM },
+          { x: PLAY_LEFT, y: PLAY_BOTTOM - 28 },
           // Bottom-Center Pocket (4)
-          { x: TABLE_WIDTH / 2 - 10, y: PLAY_BOTTOM },
-          { x: TABLE_WIDTH / 2 + 10, y: PLAY_BOTTOM },
+          { x: TABLE_WIDTH / 2 - 18, y: PLAY_BOTTOM },
+          { x: TABLE_WIDTH / 2 + 18, y: PLAY_BOTTOM },
           // Bottom-Right Pocket (5)
-          { x: PLAY_RIGHT - 12, y: PLAY_BOTTOM },
-          { x: PLAY_RIGHT, y: PLAY_BOTTOM - 12 },
+          { x: PLAY_RIGHT - 28, y: PLAY_BOTTOM },
+          { x: PLAY_RIGHT, y: PLAY_BOTTOM - 28 },
         ];
 
         let jawHit = false;
@@ -172,7 +174,7 @@ export function stepPhysics(game: GameState, subSteps = 12): boolean {
           const jdx = ball.x - jaw.x;
           const jdy = ball.y - jaw.y;
           const jdist = Math.hypot(jdx, jdy);
-          const jawRadius = 4;
+          const jawRadius = 3.5;
           const minJawDist = BALL_RADIUS + jawRadius;
 
           if (jdist < minJawDist && jdist > 0.001) {
@@ -198,13 +200,22 @@ export function stepPhysics(game: GameState, subSteps = 12): boolean {
           }
         }
 
-        // Standard Cushion Boundary Collisions
+        // Standard Cushion Boundary Collisions (Scoped strictly to actual cushion spans)
         if (!jawHit) {
           const cushionRestitution = 0.80;
           let cushionHitThisStep = false;
           let cushionHitDirection: "left" | "right" | "top" | "bottom" | null = null;
 
-          if (ball.x < PLAY_LEFT + BALL_RADIUS) {
+          const inLeftCushionSpan = ball.y >= PLAY_TOP + 26 && ball.y <= PLAY_BOTTOM - 26;
+          const inRightCushionSpan = ball.y >= PLAY_TOP + 26 && ball.y <= PLAY_BOTTOM - 26;
+          const inTopCushionSpan =
+            (ball.x >= PLAY_LEFT + 26 && ball.x <= TABLE_WIDTH / 2 - 16) ||
+            (ball.x >= TABLE_WIDTH / 2 + 16 && ball.x <= PLAY_RIGHT - 26);
+          const inBottomCushionSpan =
+            (ball.x >= PLAY_LEFT + 26 && ball.x <= TABLE_WIDTH / 2 - 16) ||
+            (ball.x >= TABLE_WIDTH / 2 + 16 && ball.x <= PLAY_RIGHT - 26);
+
+          if (inLeftCushionSpan && ball.x < PLAY_LEFT + BALL_RADIUS) {
             ball.x = PLAY_LEFT + BALL_RADIUS;
             ball.vx = Math.abs(ball.vx) * cushionRestitution;
             ball.vy += ball.sideSpin * 2.2;
@@ -212,7 +223,7 @@ export function stepPhysics(game: GameState, subSteps = 12): boolean {
             cushionHitThisStep = true;
             cushionHitDirection = "left";
           }
-          if (ball.x > PLAY_RIGHT - BALL_RADIUS) {
+          if (inRightCushionSpan && ball.x > PLAY_RIGHT - BALL_RADIUS) {
             ball.x = PLAY_RIGHT - BALL_RADIUS;
             ball.vx = -Math.abs(ball.vx) * cushionRestitution;
             ball.vy -= ball.sideSpin * 2.2;
@@ -220,15 +231,15 @@ export function stepPhysics(game: GameState, subSteps = 12): boolean {
             cushionHitThisStep = true;
             cushionHitDirection = "right";
           }
-          if (ball.y < PLAY_TOP + BALL_RADIUS) {
-            ball.y = PLAY_TOP + PLAY_TOP > 0 ? PLAY_TOP + BALL_RADIUS : PLAY_TOP + BALL_RADIUS;
+          if (inTopCushionSpan && ball.y < PLAY_TOP + BALL_RADIUS) {
+            ball.y = PLAY_TOP + BALL_RADIUS;
             ball.vy = Math.abs(ball.vy) * cushionRestitution;
             ball.vx -= ball.sideSpin * 2.2;
             ball.sideSpin *= 0.5;
             cushionHitThisStep = true;
             cushionHitDirection = "top";
           }
-          if (ball.y > PLAY_BOTTOM - BALL_RADIUS) {
+          if (inBottomCushionSpan && ball.y > PLAY_BOTTOM - BALL_RADIUS) {
             ball.y = PLAY_BOTTOM - BALL_RADIUS;
             ball.vy = -Math.abs(ball.vy) * cushionRestitution;
             ball.vx += ball.sideSpin * 2.2;

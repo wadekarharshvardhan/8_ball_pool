@@ -1,15 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f2ea;
-  --foreground: #122018;
-  color-scheme: light;
+  --background: #080b10;
+  --foreground: #f8fafc;
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-open-sans);
+  --font-bebas: var(--font-bebas);
 }
 
 * {
@@ -26,5 +27,14 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-open-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-bebas {
+  font-family: var(--font-bebas), var(--font-open-sans), sans-serif;
+  letter-spacing: 0.04em;
 }

@@ -1,10 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Open_Sans } from "next/font/google";
+import { Bebas_Neue, Open_Sans } from "next/font/google";
 import "./globals.css";
+
+const bebasNeue = Bebas_Neue({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-bebas",
+});
 
 const openSans = Open_Sans({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-open-sans",
 });
 
@@ -35,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${openSans.variable} font-sans h-full antialiased`}>
+    <html lang="en" className={`${bebasNeue.variable} ${openSans.variable} font-sans h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-[#080b10] text-slate-100 font-sans">{children}</body>
     </html>
   );
