@@ -346,6 +346,7 @@ export default function PoolGame3D() {
           game.message = `⏱️ Time out! Player ${timedOutPlayer} ran out of time. Turn passes to Player ${incomingPlayer} with Ball-in-Hand!`;
           
           soundEngine.playFoul();
+          setCueSpin({ top: 0, side: 0 });
           setGameState({ ...game });
           return TURN_TIME_LIMIT;
         }
@@ -646,6 +647,7 @@ export default function PoolGame3D() {
         game.moving = false;
         const previousTurn = game.turn;
         const updatedGame = finalizeShotRules(game);
+        setCueSpin({ top: 0, side: 0 });
         setGameState({ ...updatedGame });
         setTurnTimer(TURN_TIME_LIMIT);
 
@@ -1075,6 +1077,7 @@ export default function PoolGame3D() {
         soundEngine.playCueStrike(shotPowerRatio);
         setPower(0);
         setIsDraggingCue(false);
+        setCueSpin({ top: 0, side: 0 });
         setGameState({ ...game });
       }
     };
@@ -1448,30 +1451,34 @@ export default function PoolGame3D() {
             </>
           )}
 
-          {/* Clean Action Toolbar */}
-          <div className="flex items-center gap-1 pl-2 border-l border-slate-800">
+          {/* 3D Solid Colorful Action Toolbar */}
+          <div className="flex items-center gap-2 sm:gap-2.5 pl-2 sm:pl-3 border-l-2 border-slate-800/80">
             <button
               onClick={handleReturnToMenu}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 transition"
+              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-b-4 border-amber-700 text-slate-950 shadow-lg shadow-amber-950/40 hover:from-amber-300 hover:to-amber-400 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center"
               title="Main Menu"
             >
-              <HomeIcon className="w-4 h-4" />
+              <HomeIcon className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
             </button>
 
             <button
               onClick={() => setMuted(soundEngine.toggleMute())}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+              className={`p-3 sm:p-3.5 rounded-2xl border-b-4 shadow-lg active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center ${
+                muted
+                  ? "bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-rose-800 text-white shadow-rose-950/40 hover:from-rose-400 hover:to-rose-500"
+                  : "bg-gradient-to-b from-emerald-400 via-emerald-400 to-emerald-500 border-emerald-700 text-slate-950 shadow-emerald-950/40 hover:from-emerald-300 hover:to-emerald-400"
+              }`}
               title="Toggle Sound"
             >
-              {muted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+              {muted ? <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" /> : <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />}
             </button>
 
             <button
               onClick={() => handleStartMatch()}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-sky-400 via-sky-400 to-sky-500 border-b-4 border-sky-700 text-slate-950 shadow-lg shadow-sky-950/40 hover:from-sky-300 hover:to-sky-400 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center"
               title="Reset Rack"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
             </button>
 
             <button
@@ -1479,10 +1486,13 @@ export default function PoolGame3D() {
                 soundEngine.playButtonClick();
                 setShowSpinModal(!showSpinModal);
               }}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-b-4 border-rose-800 text-white shadow-lg shadow-rose-950/40 hover:from-rose-400 hover:to-rose-500 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center relative"
               title="Cue Spin"
             >
-              <Target className="w-4 h-4" />
+              <Target className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+              {(cueSpin.top !== 0 || cueSpin.side !== 0) && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-slate-950 animate-ping" />
+              )}
             </button>
 
             <button
@@ -1490,10 +1500,10 @@ export default function PoolGame3D() {
                 soundEngine.playButtonClick();
                 setShowThemeModal(true);
               }}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-fuchsia-500 via-fuchsia-500 to-fuchsia-600 border-b-4 border-fuchsia-800 text-white shadow-lg shadow-fuchsia-950/40 hover:from-fuchsia-400 hover:to-fuchsia-500 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center"
               title="Ball Designs"
             >
-              <Disc className="w-4 h-4" />
+              <Disc className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
             </button>
 
             <button
@@ -1501,18 +1511,18 @@ export default function PoolGame3D() {
                 soundEngine.playButtonClick();
                 setShowCueModal(true);
               }}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-indigo-500 via-indigo-500 to-indigo-600 border-b-4 border-indigo-800 text-white shadow-lg shadow-indigo-950/40 hover:from-indigo-400 hover:to-indigo-500 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center"
               title="Cue Shop"
             >
-              <Palette className="w-4 h-4" />
+              <Palette className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
             </button>
 
             <button
               onClick={() => setShowHelpModal(true)}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+              className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-teal-400 via-teal-400 to-teal-500 border-b-4 border-teal-700 text-slate-950 shadow-lg shadow-teal-950/40 hover:from-teal-300 hover:to-teal-400 active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center"
               title="Rules"
             >
-              <HelpCircle className="w-4 h-4" />
+              <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
             </button>
           </div>
         </div>
