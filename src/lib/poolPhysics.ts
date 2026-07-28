@@ -148,23 +148,23 @@ export function stepPhysics(game: GameState, subSteps = 12): boolean {
       if (!suckedIntoPocket) {
         const POCKET_JAWS = [
           // Top-Left Pocket (0)
-          { x: PLAY_LEFT + 24, y: PLAY_TOP },
-          { x: PLAY_LEFT, y: PLAY_TOP + 24 },
+          { x: PLAY_LEFT + 12, y: PLAY_TOP },
+          { x: PLAY_LEFT, y: PLAY_TOP + 12 },
           // Top-Center Pocket (1)
-          { x: TABLE_WIDTH / 2 - 20, y: PLAY_TOP },
-          { x: TABLE_WIDTH / 2 + 20, y: PLAY_TOP },
+          { x: TABLE_WIDTH / 2 - 10, y: PLAY_TOP },
+          { x: TABLE_WIDTH / 2 + 10, y: PLAY_TOP },
           // Top-Right Pocket (2)
-          { x: PLAY_RIGHT - 24, y: PLAY_TOP },
-          { x: PLAY_RIGHT, y: PLAY_TOP + 24 },
+          { x: PLAY_RIGHT - 12, y: PLAY_TOP },
+          { x: PLAY_RIGHT, y: PLAY_TOP + 12 },
           // Bottom-Left Pocket (3)
-          { x: PLAY_LEFT + 24, y: PLAY_BOTTOM },
-          { x: PLAY_LEFT, y: PLAY_BOTTOM - 24 },
+          { x: PLAY_LEFT + 12, y: PLAY_BOTTOM },
+          { x: PLAY_LEFT, y: PLAY_BOTTOM - 12 },
           // Bottom-Center Pocket (4)
-          { x: TABLE_WIDTH / 2 - 20, y: PLAY_BOTTOM },
-          { x: TABLE_WIDTH / 2 + 20, y: PLAY_BOTTOM },
+          { x: TABLE_WIDTH / 2 - 10, y: PLAY_BOTTOM },
+          { x: TABLE_WIDTH / 2 + 10, y: PLAY_BOTTOM },
           // Bottom-Right Pocket (5)
-          { x: PLAY_RIGHT - 24, y: PLAY_BOTTOM },
-          { x: PLAY_RIGHT, y: PLAY_BOTTOM - 24 },
+          { x: PLAY_RIGHT - 12, y: PLAY_BOTTOM },
+          { x: PLAY_RIGHT, y: PLAY_BOTTOM - 12 },
         ];
 
         let jawHit = false;

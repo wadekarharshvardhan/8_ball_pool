@@ -783,50 +783,50 @@ export default function PoolGame3D() {
 
       // 1. Top-Left Cushion
       drawCushion([
-        { x: PLAY_LEFT + 24, y: 22 },
-        { x: PLAY_LEFT + 24, y: PLAY_TOP },
-        { x: TABLE_WIDTH / 2 - 20, y: PLAY_TOP },
-        { x: TABLE_WIDTH / 2 - 20, y: 22 },
+        { x: PLAY_LEFT + 12, y: 22 },
+        { x: PLAY_LEFT + 12, y: PLAY_TOP },
+        { x: TABLE_WIDTH / 2 - 10, y: PLAY_TOP },
+        { x: TABLE_WIDTH / 2 - 10, y: 22 },
       ], { x: 0, y: 1 });
 
       // 2. Top-Right Cushion
       drawCushion([
-        { x: TABLE_WIDTH / 2 + 20, y: 22 },
-        { x: TABLE_WIDTH / 2 + 20, y: PLAY_TOP },
-        { x: PLAY_RIGHT - 24, y: PLAY_TOP },
-        { x: PLAY_RIGHT - 24, y: 22 },
+        { x: TABLE_WIDTH / 2 + 10, y: 22 },
+        { x: TABLE_WIDTH / 2 + 10, y: PLAY_TOP },
+        { x: PLAY_RIGHT - 12, y: PLAY_TOP },
+        { x: PLAY_RIGHT - 12, y: 22 },
       ], { x: 0, y: 1 });
 
       // 3. Bottom-Left Cushion
       drawCushion([
-        { x: PLAY_LEFT + 24, y: TABLE_HEIGHT - 22 },
-        { x: PLAY_LEFT + 24, y: PLAY_BOTTOM },
-        { x: TABLE_WIDTH / 2 - 20, y: PLAY_BOTTOM },
-        { x: TABLE_WIDTH / 2 - 20, y: TABLE_HEIGHT - 22 },
+        { x: PLAY_LEFT + 12, y: TABLE_HEIGHT - 22 },
+        { x: PLAY_LEFT + 12, y: PLAY_BOTTOM },
+        { x: TABLE_WIDTH / 2 - 10, y: PLAY_BOTTOM },
+        { x: TABLE_WIDTH / 2 - 10, y: TABLE_HEIGHT - 22 },
       ], { x: 0, y: -1 });
 
       // 4. Bottom-Right Cushion
       drawCushion([
-        { x: TABLE_WIDTH / 2 + 20, y: TABLE_HEIGHT - 22 },
-        { x: TABLE_WIDTH / 2 + 20, y: PLAY_BOTTOM },
-        { x: PLAY_RIGHT - 24, y: PLAY_BOTTOM },
-        { x: PLAY_RIGHT - 24, y: TABLE_HEIGHT - 22 },
+        { x: TABLE_WIDTH / 2 + 10, y: TABLE_HEIGHT - 22 },
+        { x: TABLE_WIDTH / 2 + 10, y: PLAY_BOTTOM },
+        { x: PLAY_RIGHT - 12, y: PLAY_BOTTOM },
+        { x: PLAY_RIGHT - 12, y: TABLE_HEIGHT - 22 },
       ], { x: 0, y: -1 });
 
       // 5. Left Cushion
       drawCushion([
-        { x: 22, y: PLAY_TOP + 24 },
-        { x: PLAY_LEFT, y: PLAY_TOP + 24 },
-        { x: PLAY_LEFT, y: PLAY_BOTTOM - 24 },
-        { x: 22, y: PLAY_BOTTOM - 24 },
+        { x: 22, y: PLAY_TOP + 12 },
+        { x: PLAY_LEFT, y: PLAY_TOP + 12 },
+        { x: PLAY_LEFT, y: PLAY_BOTTOM - 12 },
+        { x: 22, y: PLAY_BOTTOM - 12 },
       ], { x: 1, y: 0 });
 
       // 6. Right Cushion
       drawCushion([
-        { x: TABLE_WIDTH - 22, y: PLAY_TOP + 24 },
-        { x: PLAY_RIGHT, y: PLAY_TOP + 24 },
-        { x: PLAY_RIGHT, y: PLAY_BOTTOM - 24 },
-        { x: TABLE_WIDTH - 22, y: PLAY_BOTTOM - 24 },
+        { x: TABLE_WIDTH - 22, y: PLAY_TOP + 12 },
+        { x: PLAY_RIGHT, y: PLAY_TOP + 12 },
+        { x: PLAY_RIGHT, y: PLAY_BOTTOM - 12 },
+        { x: TABLE_WIDTH - 22, y: PLAY_BOTTOM - 12 },
       ], { x: -1, y: 0 });
 
       ctx.restore();
@@ -898,12 +898,12 @@ export default function PoolGame3D() {
 
         // Metallic Pocket Rim / Casting
         const rimGrad = ctx.createRadialGradient(
-          pocket.x - 2,
-          pocket.y - 2,
-          pocket.radius - 6,
+          pocket.x - 1,
+          pocket.y - 1,
+          pocket.radius - 3,
           pocket.x,
           pocket.y,
-          pocket.radius + 4
+          pocket.radius + 1.5
         );
         rimGrad.addColorStop(0, isCalled ? "#f59e0b" : "#f1f5f9");
         rimGrad.addColorStop(0.4, isCalled ? "#d97706" : "#94a3b8");
@@ -912,7 +912,7 @@ export default function PoolGame3D() {
 
         ctx.fillStyle = rimGrad;
         ctx.beginPath();
-        ctx.arc(pocket.x, pocket.y, pocket.radius + 4, 0, Math.PI * 2);
+        ctx.arc(pocket.x, pocket.y, pocket.radius + 1.5, 0, Math.PI * 2);
         ctx.fill();
 
         // Deep Drop Hole Gradient
@@ -930,7 +930,7 @@ export default function PoolGame3D() {
 
         ctx.fillStyle = holeGrad;
         ctx.beginPath();
-        ctx.arc(pocket.x, pocket.y, pocket.radius - 1, 0, Math.PI * 2);
+        ctx.arc(pocket.x, pocket.y, pocket.radius - 0.5, 0, Math.PI * 2);
         ctx.fill();
 
         if (isCalled || is8BallPhase) {

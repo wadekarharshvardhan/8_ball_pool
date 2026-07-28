@@ -69,7 +69,7 @@ export interface GameState {
 export const TABLE_WIDTH = 860;
 export const TABLE_HEIGHT = 480;
 export const BALL_RADIUS = 12;
-export const POCKET_RADIUS = 24;
+export const POCKET_RADIUS = 14;
 
 export const PLAY_LEFT = 44;
 export const PLAY_RIGHT = TABLE_WIDTH - 44;
@@ -80,12 +80,12 @@ export const CUE_START = { x: 215, y: TABLE_HEIGHT / 2 };
 export const RACK_ANCHOR = { x: 620, y: TABLE_HEIGHT / 2 };
 
 export const POCKETS: Pocket[] = [
-  { id: 0, x: PLAY_LEFT - 4, y: PLAY_TOP - 4, radius: POCKET_RADIUS + 4 },
-  { id: 1, x: TABLE_WIDTH / 2, y: PLAY_TOP - 10, radius: POCKET_RADIUS + 2 },
-  { id: 2, x: PLAY_RIGHT + 4, y: PLAY_TOP - 4, radius: POCKET_RADIUS + 4 },
-  { id: 3, x: PLAY_LEFT - 4, y: PLAY_BOTTOM + 4, radius: POCKET_RADIUS + 4 },
-  { id: 4, x: TABLE_WIDTH / 2, y: PLAY_BOTTOM + 10, radius: POCKET_RADIUS + 2 },
-  { id: 5, x: PLAY_RIGHT + 4, y: PLAY_BOTTOM + 4, radius: POCKET_RADIUS + 4 },
+  { id: 0, x: PLAY_LEFT - 1, y: PLAY_TOP - 1, radius: 14.5 },
+  { id: 1, x: TABLE_WIDTH / 2, y: PLAY_TOP - 4, radius: 13.5 },
+  { id: 2, x: PLAY_RIGHT + 1, y: PLAY_TOP - 1, radius: 14.5 },
+  { id: 3, x: PLAY_LEFT - 1, y: PLAY_BOTTOM + 1, radius: 14.5 },
+  { id: 4, x: TABLE_WIDTH / 2, y: PLAY_BOTTOM + 4, radius: 13.5 },
+  { id: 5, x: PLAY_RIGHT + 1, y: PLAY_BOTTOM + 1, radius: 14.5 },
 ];
 
 export const SOLID_COLORS: Record<number, string> = {
