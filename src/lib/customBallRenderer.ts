@@ -42,7 +42,7 @@ export function renderCustomBallSprite(
   number: number,
   kind: BallKind,
   themeId: BallThemeId,
-  size = 128
+  size = 256
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -221,26 +221,37 @@ export function renderCustomBallSprite(
       goldBorder.addColorStop(1, "#78350f");
 
       ctx.strokeStyle = goldBorder;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 4;
       ctx.stroke();
 
       ctx.fillStyle = "#0f172a";
-      ctx.font = `bold ${Math.round(size * 0.35)}px Inter, system-ui, sans-serif`;
+      ctx.font = `900 ${Math.round(size * 0.36)}px "Bebas Neue", Inter, system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(String(number), center, center + 1);
+      ctx.fillText(String(number), center, center + 2);
     }
   }
 
   // 2. Add 3D Spherical Volume Shading & Specular Glare Arc
-  const sphereShade = ctx.createRadialGradient(center * 0.6, center * 0.5, 2, center, center, radius);
-  sphereShade.addColorStop(0, "rgba(255, 255, 255, 0.45)"); // Top-left specular spot
-  sphereShade.addColorStop(0.4, "rgba(255, 255, 255, 0.05)");
-  sphereShade.addColorStop(0.85, "rgba(0, 0, 0, 0.2)");
-  sphereShade.addColorStop(1, "rgba(0, 0, 0, 0.7)"); // Dark spherical rim shadow
+  const sphereShade = ctx.createRadialGradient(center * 0.65, center * 0.45, radius * 0.05, center, center, radius);
+  sphereShade.addColorStop(0, "rgba(255, 255, 255, 0.60)"); // Top-left specular spot
+  sphereShade.addColorStop(0.35, "rgba(255, 255, 255, 0.12)");
+  sphereShade.addColorStop(0.8, "rgba(0, 0, 0, 0.15)");
+  sphereShade.addColorStop(1, "rgba(0, 0, 0, 0.78)"); // Dark spherical rim shadow
 
   ctx.fillStyle = sphereShade;
   ctx.fillRect(0, 0, size, size);
+
+  // 3. Crisp Photorealistic Glossy Reflection Lens Oval Arc
+  const glareGrad = ctx.createLinearGradient(center * 0.3, center * 0.2, center * 0.7, center * 0.5);
+  glareGrad.addColorStop(0, "rgba(255, 255, 255, 0.65)");
+  glareGrad.addColorStop(0.6, "rgba(255, 255, 255, 0.15)");
+  glareGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+
+  ctx.fillStyle = glareGrad;
+  ctx.beginPath();
+  ctx.ellipse(center * 0.62, center * 0.38, radius * 0.32, radius * 0.16, -Math.PI / 4, 0, Math.PI * 2);
+  ctx.fill();
 
   return canvas;
 }
