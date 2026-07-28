@@ -1138,7 +1138,7 @@ export default function PoolGame3D() {
 
         {/* 3D Tilt Card Container */}
         <div
-          className="relative z-10 w-full max-w-3xl rounded-3xl bg-[#0c141d]/90 border-2 border-slate-700/80 p-8 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.8)] flex flex-col items-center gap-8 text-center backdrop-blur-2xl transition-transform duration-200 ease-out"
+          className="relative z-10 w-full max-w-3xl rounded-3xl bg-gradient-to-b from-[#131b29]/95 via-[#0e1420]/95 to-[#090d15]/95 border-b-6 border-slate-800 p-8 sm:p-12 shadow-[0_30px_90px_rgba(0,0,0,0.9)] flex flex-col items-center gap-8 text-center backdrop-blur-2xl transition-transform duration-200 ease-out border-t border-slate-700/60"
           style={{
             transform: `perspective(1000px) rotateX(${cardTilt.x}deg) rotateY(${cardTilt.y}deg)`,
           }}
@@ -1147,44 +1147,54 @@ export default function PoolGame3D() {
           <div className="absolute top-5 right-5">
             <button
               onClick={() => setMuted(soundEngine.toggleMute())}
-              className="p-3 rounded-2xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 shadow-lg transition flex items-center gap-2 text-xs font-semibold"
+              className={`p-3 sm:p-3.5 rounded-2xl border-b-4 shadow-lg active:border-b-0 active:translate-y-1 transition-all duration-150 flex items-center gap-2 text-xs font-black ${
+                muted
+                  ? "bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-rose-800 text-white shadow-rose-950/40 hover:from-rose-400 hover:to-rose-500"
+                  : "bg-gradient-to-b from-emerald-400 via-emerald-400 to-emerald-500 border-emerald-700 text-slate-950 shadow-emerald-950/40 hover:from-emerald-300 hover:to-emerald-400"
+              }`}
             >
-              {muted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+              {muted ? <VolumeX className="w-4 h-4 stroke-[2.5]" /> : <Volume2 className="w-4 h-4 stroke-[2.5]" />}
               {muted ? "Muted" : "Sound On"}
             </button>
           </div>
 
           {/* 3D Orbiting 8-Ball Badge Header */}
           <div className="flex flex-col items-center gap-4 mt-2">
-            <div className="relative flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-slate-900 via-black to-slate-950 border-4 border-amber-400/90 shadow-[0_0_60px_rgba(245,158,11,0.4)] transform hover:rotate-12 hover:scale-110 transition duration-300">
-              <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white text-slate-950 font-black text-3xl shadow-inner">
+            <div className="relative flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-slate-900 via-black to-slate-950 border-4 border-amber-400 shadow-[0_0_60px_rgba(245,158,11,0.5)] transform hover:rotate-12 hover:scale-110 transition duration-300">
+              <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white text-slate-950 font-black text-3xl shadow-inner border-2 border-slate-200">
                 8
               </div>
               <div className="absolute top-2 left-4 w-6 h-3 rounded-full bg-white/30 transform -rotate-45 blur-[1px]" />
             </div>
 
             <div className="space-y-2">
-              <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white drop-shadow-lg flex items-center justify-center gap-3">
-                8 BALL <span className="text-amber-400">POOL</span>
+              <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white drop-shadow-xl flex items-center justify-center gap-3">
+                8 BALL <span className="bg-clip-text text-transparent bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500">POOL</span>
               </h1>
-              <p className="text-sm sm:text-base text-slate-400 font-medium flex items-center justify-center gap-1.5">
+              <p className="text-sm sm:text-base text-slate-400 font-bold flex items-center justify-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-amber-400" /> The Classic World Class Billiards Experience
               </p>
             </div>
           </div>
 
-          {/* Mode Selector Cards */}
+          {/* 3D Solid Mode Selector Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full my-2">
             <button
               onClick={() => {
                 soundEngine.playButtonClick();
                 setSelectedGameMode("pvp");
               }}
-              className={`flex flex-col items-center gap-3 p-4 rounded-2xl border transition transform hover:-translate-y-1 ${selectedGameMode === "pvp" ? "bg-amber-500/20 border-amber-400 text-amber-300 ring-2 ring-amber-400/50 shadow-lg" : "bg-slate-900/70 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}
+              className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-b-4 transition transform hover:-translate-y-1.5 active:border-b-0 active:translate-y-1 shadow-xl ${
+                selectedGameMode === "pvp"
+                  ? "bg-gradient-to-b from-amber-500/30 via-amber-500/20 to-slate-900 border-amber-500 text-amber-300 ring-2 ring-amber-400/60 shadow-[0_10px_30px_rgba(245,158,11,0.3)]"
+                  : "bg-gradient-to-b from-slate-800/90 to-slate-900/90 border-slate-700 text-slate-300 hover:border-slate-500 hover:from-slate-800 hover:to-slate-850"
+              }`}
             >
-              <Users className="w-6 h-6 text-amber-400" />
-              <div className="font-bold text-sm">2 Players (PvP)</div>
-              <div className="text-[11px] text-slate-400">Pass & Play Local</div>
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 border-b-4 border-amber-700 text-slate-950 shadow-md font-black">
+                <Users className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <div className="font-black text-base text-white">2 Players (PvP)</div>
+              <div className="text-xs text-slate-400 font-semibold">Pass & Play Local</div>
             </button>
 
             <button
@@ -1192,11 +1202,17 @@ export default function PoolGame3D() {
                 soundEngine.playButtonClick();
                 setSelectedGameMode("practice");
               }}
-              className={`flex flex-col items-center gap-3 p-4 rounded-2xl border transition transform hover:-translate-y-1 ${selectedGameMode === "practice" ? "bg-amber-500/20 border-amber-400 text-amber-300 ring-2 ring-amber-400/50 shadow-lg" : "bg-slate-900/70 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}
+              className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-b-4 transition transform hover:-translate-y-1.5 active:border-b-0 active:translate-y-1 shadow-xl ${
+                selectedGameMode === "practice"
+                  ? "bg-gradient-to-b from-emerald-500/30 via-emerald-500/20 to-slate-900 border-emerald-500 text-emerald-300 ring-2 ring-emerald-400/60 shadow-[0_10px_30px_rgba(16,185,129,0.3)]"
+                  : "bg-gradient-to-b from-slate-800/90 to-slate-900/90 border-slate-700 text-slate-300 hover:border-slate-500 hover:from-slate-800 hover:to-slate-850"
+              }`}
             >
-              <Target className="w-6 h-6 text-emerald-400" />
-              <div className="font-bold text-sm">Solo Practice</div>
-              <div className="text-[11px] text-slate-400">Free Training</div>
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-emerald-400 to-emerald-500 border-b-4 border-emerald-700 text-slate-950 shadow-md font-black">
+                <Target className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <div className="font-black text-base text-white">Solo Practice</div>
+              <div className="text-xs text-slate-400 font-semibold">Free Training</div>
             </button>
 
             <button
@@ -1205,34 +1221,40 @@ export default function PoolGame3D() {
                 setSelectedGameMode("ai");
                 setShowAIModal(true);
               }}
-              className={`flex flex-col items-center gap-3 p-4 rounded-2xl border transition transform hover:-translate-y-1 ${selectedGameMode === "ai" ? "bg-amber-500/20 border-amber-400 text-amber-300 ring-2 ring-amber-400/50 shadow-lg" : "bg-slate-900/70 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}
+              className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-b-4 transition transform hover:-translate-y-1.5 active:border-b-0 active:translate-y-1 shadow-xl ${
+                selectedGameMode === "ai"
+                  ? "bg-gradient-to-b from-indigo-500/30 via-indigo-500/20 to-slate-900 border-indigo-500 text-indigo-300 ring-2 ring-indigo-400/60 shadow-[0_10px_30px_rgba(99,102,241,0.3)]"
+                  : "bg-gradient-to-b from-slate-800/90 to-slate-900/90 border-slate-700 text-slate-300 hover:border-slate-500 hover:from-slate-800 hover:to-slate-850"
+              }`}
             >
-              <Bot className="w-6 h-6 text-indigo-400" />
-              <div className="font-bold text-sm">Vs AI Bot</div>
-              <div className="text-[11px] text-slate-400">
-                Mode: <span className="capitalize font-semibold text-amber-400">{selectedAIDifficulty}</span>
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-indigo-500 to-indigo-600 border-b-4 border-indigo-800 text-white shadow-md font-black">
+                <Bot className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <div className="font-black text-base text-white">Vs AI Bot</div>
+              <div className="text-xs text-slate-400 font-semibold">
+                Mode: <span className="capitalize font-black text-amber-400">{selectedAIDifficulty}</span>
               </div>
             </button>
           </div>
 
-          {/* START GAME BUTTON */}
+          {/* ULTRA MASSIVE 3D SOLID START GAME BUTTON */}
           <button
             onClick={() => handleStartMatch(selectedGameMode)}
-            className="group relative inline-flex items-center justify-center gap-3 px-12 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-black text-xl tracking-widest uppercase shadow-[0_0_40px_rgba(245,158,11,0.5)] hover:shadow-[0_0_60px_rgba(245,158,11,0.8)] hover:scale-105 active:scale-95 transition-all duration-200"
+            className="group relative inline-flex items-center justify-center gap-3.5 px-14 py-5 rounded-2xl bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-b-6 border-amber-700 text-slate-950 font-black text-2xl tracking-widest uppercase shadow-[0_12px_40px_rgba(245,158,11,0.5)] hover:shadow-[0_16px_50px_rgba(245,158,11,0.8)] hover:from-amber-300 hover:to-amber-400 active:border-b-0 active:translate-y-1.5 transition-all duration-150 transform hover:-translate-y-0.5"
           >
-            <Play className="w-6 h-6 fill-slate-950" />
+            <Play className="w-7 h-7 fill-slate-950 stroke-none" />
             START GAME
           </button>
 
           {/* AI Difficulty Selection Modal */}
           {showAIModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-              <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-700 p-6 text-white space-y-4 shadow-2xl">
+              <div className="w-full max-w-md rounded-3xl bg-slate-900 border-b-6 border-slate-800 p-6 text-white space-y-4 shadow-2xl">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <h3 className="font-bold text-base text-amber-400 flex items-center gap-2">
-                    <Bot className="w-5 h-5 text-indigo-400" /> Select AI Bot Difficulty
+                  <h3 className="font-black text-lg text-amber-400 flex items-center gap-2">
+                    <Bot className="w-6 h-6 text-indigo-400" /> Select AI Bot Difficulty
                   </h3>
-                  <button onClick={() => setShowAIModal(false)} className="text-slate-400 hover:text-white">✕</button>
+                  <button onClick={() => setShowAIModal(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
                 </div>
 
                 <div className="grid gap-3">
@@ -1242,13 +1264,17 @@ export default function PoolGame3D() {
                       setSelectedAIDifficulty("easy");
                       setShowAIModal(false);
                     }}
-                    className={`flex items-center justify-between p-4 rounded-2xl border transition text-left ${selectedAIDifficulty === "easy" ? "bg-emerald-500/20 border-emerald-400 text-emerald-300" : "bg-slate-800/60 border-slate-700 hover:bg-slate-800"}`}
+                    className={`flex items-center justify-between p-4 rounded-2xl border-b-4 transition text-left ${
+                      selectedAIDifficulty === "easy"
+                        ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
+                        : "bg-slate-800/80 border-slate-700 hover:bg-slate-800"
+                    }`}
                   >
                     <div>
-                      <div className="font-bold text-sm text-emerald-400">🟢 Easy Bot</div>
+                      <div className="font-extrabold text-base text-emerald-400">🟢 Easy Bot</div>
                       <div className="text-xs text-slate-400">Relaxed gameplay, casual accuracy</div>
                     </div>
-                    {selectedAIDifficulty === "easy" && <span className="text-xs bg-emerald-500 text-slate-950 font-bold px-2.5 py-1 rounded-lg">Active</span>}
+                    {selectedAIDifficulty === "easy" && <span className="text-xs bg-emerald-500 text-slate-950 font-black px-3 py-1 rounded-xl shadow">Active</span>}
                   </button>
 
                   <button
@@ -1257,13 +1283,17 @@ export default function PoolGame3D() {
                       setSelectedAIDifficulty("medium");
                       setShowAIModal(false);
                     }}
-                    className={`flex items-center justify-between p-4 rounded-2xl border transition text-left ${selectedAIDifficulty === "medium" ? "bg-amber-500/20 border-amber-400 text-amber-300" : "bg-slate-800/60 border-slate-700 hover:bg-slate-800"}`}
+                    className={`flex items-center justify-between p-4 rounded-2xl border-b-4 transition text-left ${
+                      selectedAIDifficulty === "medium"
+                        ? "bg-amber-500/20 border-amber-500 text-amber-300"
+                        : "bg-slate-800/80 border-slate-700 hover:bg-slate-800"
+                    }`}
                   >
                     <div>
-                      <div className="font-bold text-sm text-amber-400">🟡 Medium Bot</div>
+                      <div className="font-extrabold text-base text-amber-400">🟡 Medium Bot</div>
                       <div className="text-xs text-slate-400">Balanced competitor, moderate accuracy</div>
                     </div>
-                    {selectedAIDifficulty === "medium" && <span className="text-xs bg-amber-400 text-slate-950 font-bold px-2.5 py-1 rounded-lg">Active</span>}
+                    {selectedAIDifficulty === "medium" && <span className="text-xs bg-amber-400 text-slate-950 font-black px-3 py-1 rounded-xl shadow">Active</span>}
                   </button>
 
                   <button
@@ -1272,13 +1302,17 @@ export default function PoolGame3D() {
                       setSelectedAIDifficulty("master");
                       setShowAIModal(false);
                     }}
-                    className={`flex items-center justify-between p-4 rounded-2xl border transition text-left ${selectedAIDifficulty === "master" ? "bg-red-500/20 border-red-400 text-red-300" : "bg-slate-800/60 border-slate-700 hover:bg-slate-800"}`}
+                    className={`flex items-center justify-between p-4 rounded-2xl border-b-4 transition text-left ${
+                      selectedAIDifficulty === "master"
+                        ? "bg-red-500/20 border-red-500 text-red-300"
+                        : "bg-slate-800/80 border-slate-700 hover:bg-slate-800"
+                    }`}
                   >
                     <div>
-                      <div className="font-bold text-sm text-red-400">🔴 Master AI (Maximum Performance)</div>
+                      <div className="font-extrabold text-base text-red-400">🔴 Master AI (Maximum Performance)</div>
                       <div className="text-xs text-slate-400">Optimal geometry cut shots into all 6 pockets, 100% precision</div>
                     </div>
-                    {selectedAIDifficulty === "master" && <span className="text-xs bg-red-500 text-white font-bold px-2.5 py-1 rounded-lg">Active</span>}
+                    {selectedAIDifficulty === "master" && <span className="text-xs bg-red-500 text-white font-black px-3 py-1 rounded-xl shadow">Active</span>}
                   </button>
                 </div>
 
@@ -1287,7 +1321,7 @@ export default function PoolGame3D() {
                     setShowAIModal(false);
                     handleStartMatch("ai");
                   }}
-                  className="w-full py-3 bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl uppercase tracking-wider shadow-lg hover:bg-amber-300 transition"
+                  className="w-full py-3.5 bg-gradient-to-b from-amber-400 to-amber-500 border-b-4 border-amber-700 text-slate-950 font-black text-sm rounded-2xl uppercase tracking-wider shadow-lg hover:from-amber-300 hover:to-amber-400 active:border-b-0 active:translate-y-1 transition"
                 >
                   Start Match vs AI
                 </button>
