@@ -17,6 +17,7 @@ import {
   BALL_RADIUS,
   POCKETS,
   CUE_START,
+  RACK_ANCHOR,
   BALL_SPRITE_GRID,
   PLAY_LEFT,
   PLAY_RIGHT,
@@ -661,95 +662,233 @@ export default function PoolGame3D() {
 
       ctx.clearRect(0, 0, TABLE_WIDTH, TABLE_HEIGHT);
 
-      // A. Classic Mahogany Wood Table Frame
-      const frameRadius = 20;
+      ctx.clearRect(0, 0, TABLE_WIDTH, TABLE_HEIGHT);
+
+      // A. Photorealistic 3D Mahogany Wood Rails & Bevels (Matching User Reference Image)
+      const frameMargin = 6;
+      const frameW = TABLE_WIDTH - frameMargin * 2;
+      const frameH = TABLE_HEIGHT - frameMargin * 2;
+      const frameRadius = 24;
+
+      // 1. Rich Mahogany Wood Outer Frame
       const woodGrad = ctx.createLinearGradient(0, 0, TABLE_WIDTH, TABLE_HEIGHT);
-      woodGrad.addColorStop(0, "#4a1212");
-      woodGrad.addColorStop(0.5, "#3b0c0c");
-      woodGrad.addColorStop(1, "#280707");
+      woodGrad.addColorStop(0, "#3d1208");
+      woodGrad.addColorStop(0.3, "#5a1e0b");
+      woodGrad.addColorStop(0.5, "#421509");
+      woodGrad.addColorStop(0.7, "#61210c");
+      woodGrad.addColorStop(1, "#310d05");
 
       ctx.fillStyle = woodGrad;
       ctx.beginPath();
-      ctx.roundRect(10, 10, TABLE_WIDTH - 20, TABLE_HEIGHT - 20, frameRadius);
+      ctx.roundRect(frameMargin, frameMargin, frameW, frameH, frameRadius);
       ctx.fill();
 
-      // Brass Inlaid Trim
-      ctx.strokeStyle = "#b45309";
+      // Wood Grain Texture Stripes
+      ctx.save();
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.15)";
+      ctx.lineWidth = 1.5;
+      for (let i = 12; i < TABLE_HEIGHT - 12; i += 14) {
+        ctx.beginPath();
+        ctx.moveTo(12, i);
+        ctx.bezierCurveTo(TABLE_WIDTH * 0.3, i + (i % 5), TABLE_WIDTH * 0.7, i - (i % 5), TABLE_WIDTH - 12, i);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Outer Bevel Highlight & Shadow
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // B. Classic Billiards Green Felt Cloth
-      const playRadius = 14;
+      // B. Tournament Green Felt Cloth with Vignette & Shadow
       const feltLeft = 44;
       const feltTop = 44;
       const feltWidth = TABLE_WIDTH - 88;
       const feltHeight = TABLE_HEIGHT - 88;
+      const playRadius = 12;
 
+      const isPractice = game.gameMode === "practice";
       const feltGrad = ctx.createRadialGradient(
         TABLE_WIDTH / 2,
         TABLE_HEIGHT / 2,
-        50,
+        60,
         TABLE_WIDTH / 2,
         TABLE_HEIGHT / 2,
-        420
+        450
       );
-      const isPractice = game.gameMode === "practice";
+
       if (isPractice) {
-        // Midnight Obsidian Black Felt for Solo Practice
         feltGrad.addColorStop(0, "#262626");
         feltGrad.addColorStop(0.55, "#171717");
         feltGrad.addColorStop(0.85, "#0a0a0a");
         feltGrad.addColorStop(1, "#020202");
       } else {
-        // Classic Billiards Green Felt
+        // Deep Tournament Green matching reference image
         feltGrad.addColorStop(0, "#16a34a");
         feltGrad.addColorStop(0.55, "#15803d");
-        feltGrad.addColorStop(0.85, "#116b34");
-        feltGrad.addColorStop(1, "#094721");
+        feltGrad.addColorStop(0.85, "#0f602b");
+        feltGrad.addColorStop(1, "#073819");
       }
 
       ctx.fillStyle = feltGrad;
       ctx.beginPath();
-      ctx.roundRect(feltLeft, feltTop, feltWidth, feltHeight, playRadius);
+      ctx.roundRect(feltLeft - 10, feltTop - 10, feltWidth + 20, feltHeight + 20, playRadius + 6);
       ctx.fill();
 
-      ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
-      ctx.lineWidth = 4;
-      ctx.stroke();
+      // C. 3D Beveled Rubber Cushions & Angled Pocket Facings
+      ctx.save();
+      const cushionColorBase = isPractice ? "#1f1f1f" : "#147a3a";
+      const cushionColorLip = isPractice ? "#333333" : "#22c55e";
+      const cushionColorShadow = isPractice ? "#0d0d0d" : "#0a4721";
 
-      // C. Diamond Sight Markers
+      const drawCushion = (pts: { x: number; y: number }[], shadowDir: { x: number; y: number }) => {
+        // Soft drop-shadow onto felt
+        ctx.save();
+        ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x + shadowDir.x * 4, pts[0].y + shadowDir.y * 4);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x + shadowDir.x * 4, pts[i].y + shadowDir.y * 4);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Main Cushion Body
+        ctx.fillStyle = cushionColorBase;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x, pts[i].y);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // 3D Bevel Lip Highlight
+        ctx.strokeStyle = cushionColorLip;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(pts[1].x, pts[1].y);
+        ctx.lineTo(pts[2].x, pts[2].y);
+        ctx.stroke();
+
+        // Base Shadow Edge
+        ctx.strokeStyle = cushionColorShadow;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        ctx.lineTo(pts[3].x, pts[3].y);
+        ctx.stroke();
+      };
+
+      // 1. Top-Left Cushion
+      drawCushion([
+        { x: PLAY_LEFT + 24, y: 22 },
+        { x: PLAY_LEFT + 24, y: PLAY_TOP },
+        { x: TABLE_WIDTH / 2 - 20, y: PLAY_TOP },
+        { x: TABLE_WIDTH / 2 - 20, y: 22 },
+      ], { x: 0, y: 1 });
+
+      // 2. Top-Right Cushion
+      drawCushion([
+        { x: TABLE_WIDTH / 2 + 20, y: 22 },
+        { x: TABLE_WIDTH / 2 + 20, y: PLAY_TOP },
+        { x: PLAY_RIGHT - 24, y: PLAY_TOP },
+        { x: PLAY_RIGHT - 24, y: 22 },
+      ], { x: 0, y: 1 });
+
+      // 3. Bottom-Left Cushion
+      drawCushion([
+        { x: PLAY_LEFT + 24, y: TABLE_HEIGHT - 22 },
+        { x: PLAY_LEFT + 24, y: PLAY_BOTTOM },
+        { x: TABLE_WIDTH / 2 - 20, y: PLAY_BOTTOM },
+        { x: TABLE_WIDTH / 2 - 20, y: TABLE_HEIGHT - 22 },
+      ], { x: 0, y: -1 });
+
+      // 4. Bottom-Right Cushion
+      drawCushion([
+        { x: TABLE_WIDTH / 2 + 20, y: TABLE_HEIGHT - 22 },
+        { x: TABLE_WIDTH / 2 + 20, y: PLAY_BOTTOM },
+        { x: PLAY_RIGHT - 24, y: PLAY_BOTTOM },
+        { x: PLAY_RIGHT - 24, y: TABLE_HEIGHT - 22 },
+      ], { x: 0, y: -1 });
+
+      // 5. Left Cushion
+      drawCushion([
+        { x: 22, y: PLAY_TOP + 24 },
+        { x: PLAY_LEFT, y: PLAY_TOP + 24 },
+        { x: PLAY_LEFT, y: PLAY_BOTTOM - 24 },
+        { x: 22, y: PLAY_BOTTOM - 24 },
+      ], { x: 1, y: 0 });
+
+      // 6. Right Cushion
+      drawCushion([
+        { x: TABLE_WIDTH - 22, y: PLAY_TOP + 24 },
+        { x: PLAY_RIGHT, y: PLAY_TOP + 24 },
+        { x: PLAY_RIGHT, y: PLAY_BOTTOM - 24 },
+        { x: TABLE_WIDTH - 22, y: PLAY_BOTTOM - 24 },
+      ], { x: -1, y: 0 });
+
+      ctx.restore();
+
+      // D. Metallic Chrome / Pearl Diamond Sight Markers (3 on Top, 3 on Bottom, 3 on Left, 3 on Right)
       const diamondPositions = [
-        { x: TABLE_WIDTH * 0.25, y: 24 },
-        { x: TABLE_WIDTH * 0.5, y: 24 },
-        { x: TABLE_WIDTH * 0.75, y: 24 },
-        { x: TABLE_WIDTH * 0.25, y: TABLE_HEIGHT - 24 },
-        { x: TABLE_WIDTH * 0.5, y: TABLE_HEIGHT - 24 },
-        { x: TABLE_WIDTH * 0.75, y: TABLE_HEIGHT - 24 },
-        { x: 24, y: TABLE_HEIGHT * 0.33 },
-        { x: 24, y: TABLE_HEIGHT * 0.67 },
-        { x: TABLE_WIDTH - 24, y: TABLE_HEIGHT * 0.33 },
-        { x: TABLE_WIDTH - 24, y: TABLE_HEIGHT * 0.67 },
+        { x: TABLE_WIDTH * 0.25, y: 22 },
+        { x: TABLE_WIDTH * 0.5, y: 22 },
+        { x: TABLE_WIDTH * 0.75, y: 22 },
+        { x: TABLE_WIDTH * 0.25, y: TABLE_HEIGHT - 22 },
+        { x: TABLE_WIDTH * 0.5, y: TABLE_HEIGHT - 22 },
+        { x: TABLE_WIDTH * 0.75, y: TABLE_HEIGHT - 22 },
+        { x: 22, y: TABLE_HEIGHT * 0.25 },
+        { x: 22, y: TABLE_HEIGHT * 0.5 },
+        { x: 22, y: TABLE_HEIGHT * 0.75 },
+        { x: TABLE_WIDTH - 22, y: TABLE_HEIGHT * 0.25 },
+        { x: TABLE_WIDTH - 22, y: TABLE_HEIGHT * 0.5 },
+        { x: TABLE_WIDTH - 22, y: TABLE_HEIGHT * 0.75 },
       ];
 
-      ctx.fillStyle = "#fef08a";
       diamondPositions.forEach((pos) => {
+        const pearlGrad = ctx.createRadialGradient(
+          pos.x - 1,
+          pos.y - 1,
+          0.5,
+          pos.x,
+          pos.y,
+          4.5
+        );
+        pearlGrad.addColorStop(0, "#ffffff");
+        pearlGrad.addColorStop(0.4, "#e2e8f0");
+        pearlGrad.addColorStop(0.8, "#64748b");
+        pearlGrad.addColorStop(1, "#1e293b");
+
+        ctx.fillStyle = pearlGrad;
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 2.5, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
       });
 
-      // D. Baulk Line (Kitchen Line)
+      // E. Baulk Line (Kitchen Line) & Head Spot
       ctx.save();
-      ctx.strokeStyle = game.kitchenOnlyBallInHand ? "rgba(250, 204, 21, 0.85)" : "rgba(255, 255, 255, 0.25)";
+      ctx.strokeStyle = game.kitchenOnlyBallInHand ? "rgba(250, 204, 21, 0.85)" : "rgba(255, 255, 255, 0.2)";
       ctx.lineWidth = game.kitchenOnlyBallInHand ? 2 : 1.5;
       ctx.setLineDash(game.kitchenOnlyBallInHand ? [5, 4] : []);
       ctx.beginPath();
-      ctx.moveTo(CUE_START.x, feltTop + 4);
-      ctx.lineTo(CUE_START.x, feltTop + feltHeight - 4);
+      ctx.moveTo(CUE_START.x, PLAY_TOP);
+      ctx.lineTo(CUE_START.x, PLAY_BOTTOM);
       ctx.stroke();
+
+      // Foot Spot Dot
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.beginPath();
+      ctx.arc(RACK_ANCHOR.x, RACK_ANCHOR.y, 3, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
 
-      // E. Pockets with Brass Rim Finish
+      // F. 6 Pocket Castings (Chrome / Metallic Rims & Deep Dark Holes)
       const activeCalledPocket = game.calledPocket[game.turn];
       const playerGroup = game.groups[game.turn];
       const is8BallPhase = playerGroup !== null && countGroupBalls(game, playerGroup) === 0;
@@ -757,23 +896,26 @@ export default function PoolGame3D() {
       POCKETS.forEach((pocket) => {
         const isCalled = activeCalledPocket === pocket.id;
 
+        // Metallic Pocket Rim / Casting
         const rimGrad = ctx.createRadialGradient(
           pocket.x - 2,
           pocket.y - 2,
-          pocket.radius - 4,
+          pocket.radius - 6,
           pocket.x,
           pocket.y,
-          pocket.radius + 3
+          pocket.radius + 4
         );
-        rimGrad.addColorStop(0, isCalled ? "#f59e0b" : "#cbd5e1");
-        rimGrad.addColorStop(0.5, isCalled ? "#b45309" : "#475569");
-        rimGrad.addColorStop(1, "#0f172a");
+        rimGrad.addColorStop(0, isCalled ? "#f59e0b" : "#f1f5f9");
+        rimGrad.addColorStop(0.4, isCalled ? "#d97706" : "#94a3b8");
+        rimGrad.addColorStop(0.8, isCalled ? "#b45309" : "#334155");
+        rimGrad.addColorStop(1, "#020617");
 
         ctx.fillStyle = rimGrad;
         ctx.beginPath();
-        ctx.arc(pocket.x, pocket.y, pocket.radius + 3, 0, Math.PI * 2);
+        ctx.arc(pocket.x, pocket.y, pocket.radius + 4, 0, Math.PI * 2);
         ctx.fill();
 
+        // Deep Drop Hole Gradient
         const holeGrad = ctx.createRadialGradient(
           pocket.x,
           pocket.y,
@@ -782,9 +924,9 @@ export default function PoolGame3D() {
           pocket.y,
           pocket.radius
         );
-        holeGrad.addColorStop(0, "#020617");
-        holeGrad.addColorStop(0.8, "#090d16");
-        holeGrad.addColorStop(1, "#1e293b");
+        holeGrad.addColorStop(0, "#000000");
+        holeGrad.addColorStop(0.75, "#020617");
+        holeGrad.addColorStop(1, "#0f172a");
 
         ctx.fillStyle = holeGrad;
         ctx.beginPath();
@@ -794,17 +936,17 @@ export default function PoolGame3D() {
         if (isCalled || is8BallPhase) {
           ctx.save();
           ctx.strokeStyle = isCalled ? "#f59e0b" : "rgba(255, 255, 255, 0.4)";
-          ctx.lineWidth = isCalled ? 2.5 : 1.5;
+          ctx.lineWidth = isCalled ? 3 : 1.5;
           ctx.setLineDash(isCalled ? [] : [4, 4]);
           ctx.beginPath();
-          ctx.arc(pocket.x, pocket.y, pocket.radius + 6, 0, Math.PI * 2);
+          ctx.arc(pocket.x, pocket.y, pocket.radius + 7, 0, Math.PI * 2);
           ctx.stroke();
 
           if (isCalled) {
             ctx.fillStyle = "#f59e0b";
             ctx.font = "800 11px var(--font-plus-jakarta), sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText(`TARGET`, pocket.x, pocket.y > TABLE_HEIGHT / 2 ? pocket.y - pocket.radius - 10 : pocket.y + pocket.radius + 18);
+            ctx.fillText(`TARGET`, pocket.x, pocket.y > TABLE_HEIGHT / 2 ? pocket.y - pocket.radius - 12 : pocket.y + pocket.radius + 20);
           }
           ctx.restore();
         }

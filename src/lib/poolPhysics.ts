@@ -144,51 +144,105 @@ export function stepPhysics(game: GameState, subSteps = 12): boolean {
         return;
       }
 
-      // Cushion Collision Physics & Rail Tracker (With Frozen Ball Rule Check)
+      // Pocket Jaw Facing Deflection & Cushion Physics
       if (!suckedIntoPocket) {
-        const cushionRestitution = 0.80;
-        let cushionHitThisStep = false;
-        let cushionHitDirection: "left" | "right" | "top" | "bottom" | null = null;
+        const POCKET_JAWS = [
+          // Top-Left Pocket (0)
+          { x: PLAY_LEFT + 24, y: PLAY_TOP },
+          { x: PLAY_LEFT, y: PLAY_TOP + 24 },
+          // Top-Center Pocket (1)
+          { x: TABLE_WIDTH / 2 - 20, y: PLAY_TOP },
+          { x: TABLE_WIDTH / 2 + 20, y: PLAY_TOP },
+          // Top-Right Pocket (2)
+          { x: PLAY_RIGHT - 24, y: PLAY_TOP },
+          { x: PLAY_RIGHT, y: PLAY_TOP + 24 },
+          // Bottom-Left Pocket (3)
+          { x: PLAY_LEFT + 24, y: PLAY_BOTTOM },
+          { x: PLAY_LEFT, y: PLAY_BOTTOM - 24 },
+          // Bottom-Center Pocket (4)
+          { x: TABLE_WIDTH / 2 - 20, y: PLAY_BOTTOM },
+          { x: TABLE_WIDTH / 2 + 20, y: PLAY_BOTTOM },
+          // Bottom-Right Pocket (5)
+          { x: PLAY_RIGHT - 24, y: PLAY_BOTTOM },
+          { x: PLAY_RIGHT, y: PLAY_BOTTOM - 24 },
+        ];
 
-        if (ball.x < PLAY_LEFT + BALL_RADIUS) {
-          ball.x = PLAY_LEFT + BALL_RADIUS;
-          ball.vx = Math.abs(ball.vx) * cushionRestitution;
-          ball.vy += ball.sideSpin * 2.2;
-          ball.sideSpin *= 0.5;
-          cushionHitThisStep = true;
-          cushionHitDirection = "left";
-        }
-        if (ball.x > PLAY_RIGHT - BALL_RADIUS) {
-          ball.x = PLAY_RIGHT - BALL_RADIUS;
-          ball.vx = -Math.abs(ball.vx) * cushionRestitution;
-          ball.vy -= ball.sideSpin * 2.2;
-          ball.sideSpin *= 0.5;
-          cushionHitThisStep = true;
-          cushionHitDirection = "right";
-        }
-        if (ball.y < PLAY_TOP + BALL_RADIUS) {
-          ball.y = PLAY_TOP + BALL_RADIUS;
-          ball.vy = Math.abs(ball.vy) * cushionRestitution;
-          ball.vx -= ball.sideSpin * 2.2;
-          ball.sideSpin *= 0.5;
-          cushionHitThisStep = true;
-          cushionHitDirection = "top";
-        }
-        if (ball.y > PLAY_BOTTOM - BALL_RADIUS) {
-          ball.y = PLAY_BOTTOM - BALL_RADIUS;
-          ball.vy = -Math.abs(ball.vy) * cushionRestitution;
-          ball.vx += ball.sideSpin * 2.2;
-          ball.sideSpin *= 0.5;
-          cushionHitThisStep = true;
-          cushionHitDirection = "bottom";
+        let jawHit = false;
+        for (const jaw of POCKET_JAWS) {
+          const jdx = ball.x - jaw.x;
+          const jdy = ball.y - jaw.y;
+          const jdist = Math.hypot(jdx, jdy);
+          const jawRadius = 4;
+          const minJawDist = BALL_RADIUS + jawRadius;
+
+          if (jdist < minJawDist && jdist > 0.001) {
+            const jnx = jdx / jdist;
+            const jny = jdy / jdist;
+
+            const overlap = minJawDist - jdist;
+            ball.x += jnx * overlap;
+            ball.y += jny * overlap;
+
+            const vDotN = ball.vx * jnx + ball.vy * jny;
+            if (vDotN < 0) {
+              const cushionRestitution = 0.82;
+              ball.vx = (ball.vx - 2 * vDotN * jnx) * cushionRestitution;
+              ball.vy = (ball.vy - 2 * vDotN * jny) * cushionRestitution;
+              soundEngine.playCushionHit(speed / 10);
+              if (game.shot && game.shot.firstContactBallNumber !== null) {
+                game.shot.railHitAfterContact = true;
+              }
+            }
+            jawHit = true;
+            break;
+          }
         }
 
-        if (cushionHitThisStep) {
-          soundEngine.playCushionHit(speed / 10);
-          if (game.shot && game.shot.firstContactBallNumber !== null) {
-            // Frozen Ball Rule: Hitting the cushion that ball was already frozen to does NOT count!
-            if (!ball.frozenCushion || ball.frozenCushion !== cushionHitDirection) {
-              game.shot.railHitAfterContact = true;
+        // Standard Cushion Boundary Collisions
+        if (!jawHit) {
+          const cushionRestitution = 0.80;
+          let cushionHitThisStep = false;
+          let cushionHitDirection: "left" | "right" | "top" | "bottom" | null = null;
+
+          if (ball.x < PLAY_LEFT + BALL_RADIUS) {
+            ball.x = PLAY_LEFT + BALL_RADIUS;
+            ball.vx = Math.abs(ball.vx) * cushionRestitution;
+            ball.vy += ball.sideSpin * 2.2;
+            ball.sideSpin *= 0.5;
+            cushionHitThisStep = true;
+            cushionHitDirection = "left";
+          }
+          if (ball.x > PLAY_RIGHT - BALL_RADIUS) {
+            ball.x = PLAY_RIGHT - BALL_RADIUS;
+            ball.vx = -Math.abs(ball.vx) * cushionRestitution;
+            ball.vy -= ball.sideSpin * 2.2;
+            ball.sideSpin *= 0.5;
+            cushionHitThisStep = true;
+            cushionHitDirection = "right";
+          }
+          if (ball.y < PLAY_TOP + BALL_RADIUS) {
+            ball.y = PLAY_TOP + PLAY_TOP > 0 ? PLAY_TOP + BALL_RADIUS : PLAY_TOP + BALL_RADIUS;
+            ball.vy = Math.abs(ball.vy) * cushionRestitution;
+            ball.vx -= ball.sideSpin * 2.2;
+            ball.sideSpin *= 0.5;
+            cushionHitThisStep = true;
+            cushionHitDirection = "top";
+          }
+          if (ball.y > PLAY_BOTTOM - BALL_RADIUS) {
+            ball.y = PLAY_BOTTOM - BALL_RADIUS;
+            ball.vy = -Math.abs(ball.vy) * cushionRestitution;
+            ball.vx += ball.sideSpin * 2.2;
+            ball.sideSpin *= 0.5;
+            cushionHitThisStep = true;
+            cushionHitDirection = "bottom";
+          }
+
+          if (cushionHitThisStep) {
+            soundEngine.playCushionHit(speed / 10);
+            if (game.shot && game.shot.firstContactBallNumber !== null) {
+              if (!ball.frozenCushion || ball.frozenCushion !== cushionHitDirection) {
+                game.shot.railHitAfterContact = true;
+              }
             }
           }
         }
