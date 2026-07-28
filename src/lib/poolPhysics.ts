@@ -14,6 +14,8 @@ import {
   CUE_START,
   countGroupBalls,
   getGroup,
+  isCueBallOverlapping,
+  findValidCueBallPosition,
   PoolRuleEngine,
 } from "./PoolRuleEngine";
 
@@ -347,7 +349,7 @@ export function calculateAimTrajectory(game: GameState) {
 }
 
 // ----------------------------------------------------------------------
-// ADVANCED AUTOMATED AI BILLIARDS SHOT ENGINE
+// 3. ADVANCED AUTOMATED AI BILLIARDS SHOT ENGINE
 // ----------------------------------------------------------------------
 export type AIDifficulty = "easy" | "medium" | "master";
 
@@ -360,17 +362,6 @@ export interface AIShotResult {
 
 export function calculateBestAIShot(game: GameState, difficulty: AIDifficulty = "master"): AIShotResult {
   const cueBall = game.balls[0];
-  let cueX = cueBall.x;
-  let cueY = cueBall.y;
-
-  // Ball in Hand positioning for AI
-  if (game.ballInHand) {
-    const minX = game.kitchenOnlyBallInHand ? PLAY_LEFT + BALL_RADIUS * 2 : PLAY_LEFT + BALL_RADIUS * 4;
-    const maxX = game.kitchenOnlyBallInHand ? CUE_START.x : PLAY_RIGHT - BALL_RADIUS * 4;
-    cueX = (minX + maxX) / 2;
-    cueY = TABLE_HEIGHT / 2;
-  }
-
   const aiGroup = game.groups[2];
   const activeBalls = game.balls.filter((b) => !b.pocketed && b.number !== 0);
 
@@ -379,27 +370,20 @@ export function calculateBestAIShot(game: GameState, difficulty: AIDifficulty = 
   if (game.tableState === "assigned" && aiGroup !== null) {
     hasRemainingGroupBalls = countGroupBalls(game, aiGroup) > 0;
   } else {
-    // Open table: AI has remaining group balls
     hasRemainingGroupBalls = activeBalls.some((b) => b.number !== 8);
   }
 
-  // Determine legal target balls for AI
   let legalBalls: BallState[] = [];
-
   if (!hasRemainingGroupBalls) {
-    // ALL group balls pocketed: target 8-Ball only!
     legalBalls = activeBalls.filter((b) => b.number === 8);
   } else {
-    // STRICT RULE: 8-Ball is 100% FORBIDDEN while group balls remain!
     if (game.tableState === "assigned" && aiGroup !== null) {
       legalBalls = activeBalls.filter((b) => getGroup(b.number) === aiGroup && b.number !== 8);
     } else {
-      // Open table: any ball EXCEPT 8-Ball
       legalBalls = activeBalls.filter((b) => b.number !== 8);
     }
   }
 
-  // Fallback protection: Never allow 8-ball if group balls remain!
   if (legalBalls.length === 0) {
     if (hasRemainingGroupBalls) {
       legalBalls = activeBalls.filter((b) => b.number !== 8);
@@ -408,89 +392,76 @@ export function calculateBestAIShot(game: GameState, difficulty: AIDifficulty = 
     }
   }
 
-  let bestShot: { aimAngle: number; power: number; score: number } | null = null;
+  // Generate candidate non-overlapping cue ball positions for AI
+  const candidateCuePositions: { x: number; y: number }[] = [];
 
-  if (difficulty === "easy") {
-    // ------------------------------------------------------------------
-    // EASY_AI_BOT ROLE SPECIFICATION
-    // ------------------------------------------------------------------
-    // 1. GEOMETRY ANALYSIS: Scan only nearest 2 pockets per eligible target ball
-    for (const target of legalBalls) {
-      const sortedPockets = [...POCKETS]
-        .sort((a, b) => {
-          const distA = Math.hypot(a.x - target.x, a.y - target.y);
-          const distB = Math.hypot(b.x - target.x, b.y - target.y);
-          return distA - distB;
-        })
-        .slice(0, 2);
+  if (game.ballInHand) {
+    const minX = PLAY_LEFT + BALL_RADIUS + 4;
+    const maxX = game.kitchenOnlyBallInHand ? CUE_START.x : PLAY_RIGHT - BALL_RADIUS * 4;
+    const minY = PLAY_TOP + BALL_RADIUS + 4;
+    const maxY = PLAY_BOTTOM - BALL_RADIUS * 4;
 
-      for (const pocket of sortedPockets) {
-        const pocketDx = pocket.x - target.x;
-        const pocketDy = pocket.y - target.y;
-        const distPocket = Math.hypot(pocketDx, pocketDy) || 1;
-
-        const pDirX = pocketDx / distPocket;
-        const pDirY = pocketDy / distPocket;
-
-        const ghostX = target.x - pDirX * (BALL_RADIUS * 2);
-        const ghostY = target.y - pDirY * (BALL_RADIUS * 2);
-
-        const cueDx = ghostX - cueX;
-        const cueDy = ghostY - cueY;
-        const distCue = Math.hypot(cueDx, cueDy) || 1;
-
-        const cDirX = cueDx / distCue;
-        const cDirY = cueDy / distCue;
-
-        const dot = cDirX * pDirX + cDirY * pDirY;
-        if (dot <= 0.1) continue;
-
-        const cutAngle = Math.acos(Math.max(-1, Math.min(1, dot)));
-
-        // 2. POSITION PLAY: S_position = 0. Pure pot score
-        const sPot = 1000 - cutAngle * 500 - distPocket * 0.5 - distCue * 0.4;
-        const sPosition = 0;
-        const score = sPot + sPosition;
-
-        if (!bestShot || score > bestShot.score) {
-          const aimAngle = Math.atan2(cueDy, cueDx);
-          const power = Math.max(0.3, Math.min(0.65, (distCue + distPocket) / 700));
-          bestShot = { aimAngle, power, score };
-        }
-      }
-    }
-
-    // 3. DEFENSE: If no clear shot, hit cue ball softly toward nearest legal ball (excluding 8-Ball)
-    if (!bestShot) {
-      const target = (hasRemainingGroupBalls ? legalBalls.find((b) => b.number !== 8) : null) || legalBalls[0] || activeBalls[0];
-      const aimAngle = Math.atan2(target.y - cueY, target.x - cueX);
-      bestShot = { aimAngle, power: 0.25, score: 0 };
-    }
-
-    // 4. PRECISION MODIFIER: Random Gaussian noise offset between +/- 3.0 to 5.0 degrees
-    const sign = Math.random() < 0.5 ? -1 : 1;
-    const noiseDegrees = 3.0 + Math.random() * 2.0; // 3.0 to 5.0 deg
-    const noiseRad = sign * ((noiseDegrees * Math.PI) / 180);
-
-    return {
-      aimAngle: bestShot.aimAngle + noiseRad,
-      power: bestShot.power,
-      cueX,
-      cueY,
-    };
-  }
-
-  if (difficulty === "master") {
-    // ------------------------------------------------------------------
-    // MASTER_AI_BOT ROLE SPECIFICATION (Maximum Performance Engine)
-    // ------------------------------------------------------------------
-    const maxCutAngleRad = (85 * Math.PI) / 180; // Accept cut angles up to 85 degrees
-
+    // A. Direct alignment candidate positions: line up straight behind target balls to pocket
     for (const target of legalBalls) {
       for (const pocket of POCKETS) {
         const pocketDx = pocket.x - target.x;
         const pocketDy = pocket.y - target.y;
         const distPocket = Math.hypot(pocketDx, pocketDy) || 1;
+        const pDirX = pocketDx / distPocket;
+        const pDirY = pocketDy / distPocket;
+
+        const ghostX = target.x - pDirX * (BALL_RADIUS * 2);
+        const ghostY = target.y - pDirY * (BALL_RADIUS * 2);
+
+        // Try candidate positions along the straight line behind the ghost ball
+        for (const distBack of [40, 70, 110, 160, 220]) {
+          const setupX = ghostX - pDirX * distBack;
+          const setupY = ghostY - pDirY * distBack;
+          if (!isCueBallOverlapping(game, setupX, setupY)) {
+            candidateCuePositions.push({ x: setupX, y: setupY });
+          }
+        }
+      }
+    }
+
+    // B. Uniform Grid candidate positions across allowed area
+    const stepX = Math.max(25, (maxX - minX) / 10);
+    const stepY = Math.max(25, (maxY - minY) / 6);
+    for (let x = minX; x <= maxX; x += stepX) {
+      for (let y = minY; y <= maxY; y += stepY) {
+        if (!isCueBallOverlapping(game, x, y)) {
+          candidateCuePositions.push({ x, y });
+        }
+      }
+    }
+
+    // C. Fallback to guaranteed valid position if grid returned empty
+    if (candidateCuePositions.length === 0) {
+      candidateCuePositions.push(findValidCueBallPosition(game));
+    }
+  } else {
+    candidateCuePositions.push({ x: cueBall.x, y: cueBall.y });
+  }
+
+  let bestShot: { aimAngle: number; power: number; score: number; cueX: number; cueY: number } | null = null;
+
+  // Evaluate candidate positions across targets and pockets
+  for (const pos of candidateCuePositions) {
+    const cueX = pos.x;
+    const cueY = pos.y;
+
+    for (const target of legalBalls) {
+      const pocketsToScan =
+        difficulty === "easy"
+          ? [...POCKETS]
+              .sort((a, b) => Math.hypot(a.x - target.x, a.y - target.y) - Math.hypot(b.x - target.x, b.y - target.y))
+              .slice(0, 2)
+          : POCKETS;
+
+      for (const pocket of pocketsToScan) {
+        const pocketDx = pocket.x - target.x;
+        const pocketDy = pocket.y - target.y;
+        const distPocket = Math.hypot(pocketDx, pocketDy) || 1;
 
         const pDirX = pocketDx / distPocket;
         const pDirY = pocketDy / distPocket;
@@ -506,31 +477,41 @@ export function calculateBestAIShot(game: GameState, difficulty: AIDifficulty = 
         const cDirY = cueDy / distCue;
 
         const dot = cDirX * pDirX + cDirY * pDirY;
-        if (dot <= 0.08) continue; // Up to 85 deg
+
+        let maxCutDot = 0.1;
+        if (difficulty === "master") maxCutDot = 0.08; // Up to 85 deg
+        else if (difficulty === "medium") maxCutDot = 0.42; // Up to 65 deg
+        else maxCutDot = 0.5;
+
+        if (dot <= maxCutDot) continue;
 
         const cutAngle = Math.acos(Math.max(-1, Math.min(1, dot)));
-        if (cutAngle > maxCutAngleRad) continue;
 
-        // Immediate Pot Score S_pot
-        const sPot = 1200 - cutAngle * 350 - distPocket * 0.35 - distCue * 0.25;
+        let sPot = 1000 - cutAngle * 400 - distPocket * 0.4 - distCue * 0.3;
 
-        // Invisible Physics Lookahead Simulation for Cue Resting Position S_position
-        const tangX = -pDirY;
-        const tangY = pDirX;
-        const dotTang = cDirX * tangX + cDirY * tangY;
-        const predictedRestX = ghostX + tangX * dotTang * 120;
-        const predictedRestY = ghostY + tangY * dotTang * 120;
+        // Position bonus when Ball-in-Hand is active for clean straight setup
+        if (game.ballInHand) {
+          if (cutAngle < 0.1) sPot += 350; // Straight shot alignment bonus
+          sPot += 100;
+        }
 
-        // Evaluate next target ball availability from predicted rest position
-        const remainingTargets = legalBalls.filter((b) => b.number !== target.number);
         let sPosition = 0;
-        if (remainingTargets.length > 0) {
-          let minDistToNext = Infinity;
-          for (const nextB of remainingTargets) {
-            const d = Math.hypot(nextB.x - predictedRestX, nextB.y - predictedRestY);
-            if (d < minDistToNext) minDistToNext = d;
+        if (difficulty === "master") {
+          const tangX = -pDirY;
+          const tangY = pDirX;
+          const dotTang = cDirX * tangX + cDirY * tangY;
+          const predictedRestX = ghostX + tangX * dotTang * 120;
+          const predictedRestY = ghostY + tangY * dotTang * 120;
+
+          const remainingTargets = legalBalls.filter((b) => b.number !== target.number);
+          if (remainingTargets.length > 0) {
+            let minDistToNext = Infinity;
+            for (const nextB of remainingTargets) {
+              const d = Math.hypot(nextB.x - predictedRestX, nextB.y - predictedRestY);
+              if (d < minDistToNext) minDistToNext = d;
+            }
+            sPosition = Math.max(0, 300 - minDistToNext * 0.5);
           }
-          sPosition = Math.max(0, 300 - minDistToNext * 0.5);
         }
 
         const score = sPot + sPosition;
@@ -538,101 +519,38 @@ export function calculateBestAIShot(game: GameState, difficulty: AIDifficulty = 
         if (!bestShot || score > bestShot.score) {
           const aimAngle = Math.atan2(cueDy, cueDx);
           const power = Math.max(0.35, Math.min(0.9, (distCue + distPocket) / 600));
-          bestShot = { aimAngle, power, score };
+          bestShot = { aimAngle, power, score, cueX, cueY };
         }
       }
     }
-
-    // DEFENSE / SNOOKER SAFETY PLAY
-    if (!bestShot) {
-      const primaryTarget = (hasRemainingGroupBalls ? legalBalls.find((b) => b.number !== 8) : null) || legalBalls[0] || activeBalls[0];
-      const aimAngle = Math.atan2(primaryTarget.y - cueY, primaryTarget.x - cueX);
-      bestShot = { aimAngle, power: 0.28, score: 0 };
-    }
-
-    // PRECISION MODIFIER: Exactly 0.0 degrees noise (100% mathematically perfect execution)
-    return {
-      aimAngle: bestShot.aimAngle,
-      power: bestShot.power,
-      cueX,
-      cueY,
-    };
   }
 
-  if (difficulty === "medium") {
-    // ------------------------------------------------------------------
-    // MEDIUM_AI_BOT ROLE SPECIFICATION
-    // ------------------------------------------------------------------
-    const maxCutAngleRad = (65 * Math.PI) / 180; // Filter cut angles > 65 degrees
-
-    for (const target of legalBalls) {
-      for (const pocket of POCKETS) {
-        const pocketDx = pocket.x - target.x;
-        const pocketDy = pocket.y - target.y;
-        const distPocket = Math.hypot(pocketDx, pocketDy) || 1;
-
-        const pDirX = pocketDx / distPocket;
-        const pDirY = pocketDy / distPocket;
-
-        const ghostX = target.x - pDirX * (BALL_RADIUS * 2);
-        const ghostY = target.y - pDirY * (BALL_RADIUS * 2);
-
-        const cueDx = ghostX - cueX;
-        const cueDy = ghostY - cueY;
-        const distCue = Math.hypot(cueDx, cueDy) || 1;
-
-        const cDirX = cueDx / distCue;
-        const cDirY = cueDy / distCue;
-
-        const dot = cDirX * pDirX + cDirY * pDirY;
-        if (dot <= 0.1) continue;
-
-        const cutAngle = Math.acos(Math.max(-1, Math.min(1, dot)));
-        if (cutAngle > maxCutAngleRad) continue; // Filter out cut angles > 65 degrees
-
-        // Prioritize target ball closest to a pocket to ensure consistent simple play
-        const score = 1000 - distPocket * 2.0 - cutAngle * 150 - distCue * 0.2;
-
-        if (!bestShot || score > bestShot.score) {
-          const aimAngle = Math.atan2(cueDy, cueDx);
-          const power = Math.max(0.35, Math.min(0.75, (distCue + distPocket) / 600));
-          bestShot = { aimAngle, power, score };
-        }
-      }
-    }
-
-    // DEFENSE: If no immediate pots found (cut angle <= 65 deg), execute a basic contact shot (excluding 8-Ball)
-    if (!bestShot) {
-      const target = (hasRemainingGroupBalls ? legalBalls.find((b) => b.number !== 8) : null) || legalBalls[0] || activeBalls[0];
-      const aimAngle = Math.atan2(target.y - cueY, target.x - cueX);
-      bestShot = { aimAngle, power: 0.35, score: 0 };
-    }
-
-    // PRECISION MODIFIER: Minor random noise offset between +/- 1.0 to 1.5 degrees
-    const sign = Math.random() < 0.5 ? -1 : 1;
-    const noiseDegrees = 1.0 + Math.random() * 0.5; // 1.0 to 1.5 deg
-    const noiseRad = sign * ((noiseDegrees * Math.PI) / 180);
-
-    return {
-      aimAngle: bestShot.aimAngle + noiseRad,
-      power: bestShot.power,
-      cueX,
-      cueY,
-    };
-  }
-
-  // MASTER AI (0 Noise, 100% Precision)
+  // Fallback safety shot if no pot shot met criteria
   if (!bestShot) {
-    const target = legalBalls[0] || activeBalls[0];
-    const aimAngle = Math.atan2(target.y - cueY, target.x - cueX);
-    bestShot = { aimAngle, power: 0.5, score: 0 };
+    const chosenPos = candidateCuePositions[0] || findValidCueBallPosition(game);
+    const target = (hasRemainingGroupBalls ? legalBalls.find((b) => b.number !== 8) : null) || legalBalls[0] || activeBalls[0];
+    const aimAngle = target ? Math.atan2(target.y - chosenPos.y, target.x - chosenPos.x) : 0;
+    bestShot = { aimAngle, power: 0.3, score: 0, cueX: chosenPos.x, cueY: chosenPos.y };
+  }
+
+  // Ensure chosen position is 100% valid and non-overlapping
+  const finalCuePos = findValidCueBallPosition(game, bestShot.cueX, bestShot.cueY);
+
+  // Add random noise offset based on difficulty
+  let noiseRad = 0;
+  if (difficulty === "easy") {
+    const sign = Math.random() < 0.5 ? -1 : 1;
+    noiseRad = sign * (((3.0 + Math.random() * 2.0) * Math.PI) / 180);
+  } else if (difficulty === "medium") {
+    const sign = Math.random() < 0.5 ? -1 : 1;
+    noiseRad = sign * (((1.0 + Math.random() * 0.5) * Math.PI) / 180);
   }
 
   return {
-    aimAngle: bestShot.aimAngle,
+    aimAngle: bestShot.aimAngle + noiseRad,
     power: bestShot.power,
-    cueX,
-    cueY,
+    cueX: finalCuePos.x,
+    cueY: finalCuePos.y,
   };
 }
 

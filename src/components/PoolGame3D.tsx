@@ -11,6 +11,7 @@ import {
   getGroup,
   countGroupBalls,
   isCueBallOverlapping,
+  findValidCueBallPosition,
   TABLE_WIDTH,
   TABLE_HEIGHT,
   BALL_RADIUS,
@@ -163,6 +164,17 @@ export default function PoolGame3D() {
   const [selectedAIDifficulty, setSelectedAIDifficulty] = useState<AIDifficulty>("master");
   const [showAIModal, setShowAIModal] = useState(false);
   const isAIExecutingRef = useRef<boolean>(false);
+
+  // Bot Ball-in-Hand Placement Animation Ref
+  const botPlacementAnimRef = useRef<{
+    active: boolean;
+    startX: number;
+    startY: number;
+    targetX: number;
+    targetY: number;
+    startTime: number;
+    duration: number;
+  } | null>(null);
 
   // Modals
   const [showCueModal, setShowCueModal] = useState(false);
@@ -362,18 +374,57 @@ export default function PoolGame3D() {
       const game = gameRef.current;
       if (!game.moving && game.turn === 2 && game.winner === null) {
         const aiShot = calculateBestAIShot(game, selectedAIDifficulty);
-        targetAimAngleRef.current = aiShot.aimAngle;
-        game.aimAngle = aiShot.aimAngle;
 
         if (game.ballInHand) {
-          game.balls[0].x = aiShot.cueX;
-          game.balls[0].y = aiShot.cueY;
+          const validPos = findValidCueBallPosition(game, aiShot.cueX, aiShot.cueY);
+          const startX = game.balls[0].x;
+          const startY = game.balls[0].y;
+          const dist = Math.hypot(validPos.x - startX, validPos.y - startY);
+
+          if (dist > 6) {
+            const animDuration = Math.min(1200, Math.max(650, dist * 2.2));
+            botPlacementAnimRef.current = {
+              active: true,
+              startX,
+              startY,
+              targetX: validPos.x,
+              targetY: validPos.y,
+              startTime: performance.now(),
+              duration: animDuration,
+            };
+
+            game.message = "Player 2's turn.";
+            setGameState({ ...game });
+
+            setTimeout(() => {
+              const currentG = gameRef.current;
+              if (currentG.turn === 2 && !currentG.moving) {
+                targetAimAngleRef.current = aiShot.aimAngle;
+                currentG.aimAngle = aiShot.aimAngle;
+                currentG.message = "Player 2's turn.";
+                setGameState({ ...currentG });
+
+                setTimeout(() => {
+                  executeShotWithPower(aiShot.power);
+                  isAIExecutingRef.current = false;
+                }, 400);
+              } else {
+                isAIExecutingRef.current = false;
+              }
+            }, animDuration + 120);
+            return;
+          } else {
+            game.balls[0].x = validPos.x;
+            game.balls[0].y = validPos.y;
+          }
         }
 
+        targetAimAngleRef.current = aiShot.aimAngle;
+        game.aimAngle = aiShot.aimAngle;
         executeShotWithPower(aiShot.power);
       }
       isAIExecutingRef.current = false;
-    }, 1000);
+    }, 600);
 
     return () => {
       // Do NOT cancel timer on state re-renders so user clicks cannot abort the Computer Bot turn!
@@ -490,6 +541,13 @@ export default function PoolGame3D() {
   const handleCanvasPointerUp = () => {
     if (isDraggingCueBall) {
       setIsDraggingCueBall(false);
+      const game = gameRef.current;
+      if (game.ballInHand && isCueBallOverlapping(game, game.balls[0].x, game.balls[0].y)) {
+        const validPos = findValidCueBallPosition(game, game.balls[0].x, game.balls[0].y);
+        game.balls[0].x = validPos.x;
+        game.balls[0].y = validPos.y;
+        setGameState({ ...game });
+      }
     }
   };
 
@@ -557,6 +615,26 @@ export default function PoolGame3D() {
 
     const render = () => {
       const game = gameRef.current;
+
+      // Update Bot Placement Animation position if active
+      if (botPlacementAnimRef.current && botPlacementAnimRef.current.active) {
+        const anim = botPlacementAnimRef.current;
+        const elapsed = performance.now() - anim.startTime;
+        const progress = Math.min(1.0, elapsed / anim.duration);
+
+        // Cubic ease-in-out curve
+        const ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+        game.balls[0].x = anim.startX + (anim.targetX - anim.startX) * ease;
+        game.balls[0].y = anim.startY + (anim.targetY - anim.startY) * ease;
+
+        if (progress >= 1.0) {
+          anim.active = false;
+          game.balls[0].x = anim.targetX;
+          game.balls[0].y = anim.targetY;
+          soundEngine.playButtonClick();
+        }
+      }
 
       // Smooth Angular Dampening
       game.aimAngle = lerpAngle(game.aimAngle, targetAimAngleRef.current, 0.12);
@@ -913,6 +991,22 @@ export default function PoolGame3D() {
         ctx.restore();
       });
 
+      // I. Simple Graphic Overlay during AI Ball-in-Hand placement
+      if (botPlacementAnimRef.current && botPlacementAnimRef.current.active) {
+        const anim = botPlacementAnimRef.current;
+
+        ctx.save();
+
+        // Simple Destination Target Circle Outline
+        ctx.strokeStyle = "#facc15";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(anim.targetX, anim.targetY, BALL_RADIUS + 4, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
       animId = requestAnimationFrame(render);
     };
 
@@ -933,12 +1027,18 @@ export default function PoolGame3D() {
 
     const cueBall = game.balls[0];
     if (game.ballInHand && isCueBallOverlapping(game, cueBall.x, cueBall.y)) {
-      game.message = "🚫 Cannot shoot while the white ball is overlapping another ball!";
-      soundEngine.playFoul();
-      setPower(0);
-      setIsDraggingCue(false);
-      setGameState({ ...game });
-      return;
+      if (game.gameMode === "ai" && game.turn === 2) {
+        const validPos = findValidCueBallPosition(game, cueBall.x, cueBall.y);
+        cueBall.x = validPos.x;
+        cueBall.y = validPos.y;
+      } else {
+        game.message = "🚫 Cannot shoot while the white ball is overlapping another ball!";
+        soundEngine.playFoul();
+        setPower(0);
+        setIsDraggingCue(false);
+        setGameState({ ...game });
+        return;
+      }
     }
 
     PoolRuleEngine.onShotStart(game, shotPowerRatio);

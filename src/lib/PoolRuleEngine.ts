@@ -141,9 +141,19 @@ export function otherPlayer(player: PlayerId): PlayerId {
   return player === 1 ? 2 : 1;
 }
 
-// Check if cue ball overlaps any active object ball OR is placed inside/near a pocket during Ball-in-Hand
+// Check if cue ball overlaps any active object ball OR is placed inside/near a pocket OR outside legal table boundary
 export function isCueBallOverlapping(game: GameState, testX: number, testY: number): boolean {
-  // A. Overlap with active object balls
+  // A. Cushion & Kitchen boundaries check
+  const minX = PLAY_LEFT + BALL_RADIUS;
+  const maxX = game.kitchenOnlyBallInHand ? CUE_START.x : PLAY_RIGHT - BALL_RADIUS;
+  const minY = PLAY_TOP + BALL_RADIUS;
+  const maxY = PLAY_BOTTOM - BALL_RADIUS;
+
+  if (testX < minX || testX > maxX || testY < minY || testY > maxY) {
+    return true;
+  }
+
+  // B. Overlap with active object balls
   for (const b of game.balls) {
     if (b.number === 0 || b.pocketed) continue;
 
@@ -153,7 +163,7 @@ export function isCueBallOverlapping(game: GameState, testX: number, testY: numb
     }
   }
 
-  // B. Proximity to pockets (Cannot place cue ball directly inside or on the edge of a pocket!)
+  // C. Proximity to pockets (Cannot place cue ball directly inside or on the edge of a pocket!)
   for (const pocket of POCKETS) {
     const dist = Math.hypot(testX - pocket.x, testY - pocket.y);
     if (dist < pocket.radius + BALL_RADIUS - 4) {
@@ -162,6 +172,56 @@ export function isCueBallOverlapping(game: GameState, testX: number, testY: numb
   }
 
   return false;
+}
+
+// Find a valid, non-overlapping cue ball position within legal table area
+export function findValidCueBallPosition(
+  game: GameState,
+  preferredX?: number,
+  preferredY?: number
+): { x: number; y: number } {
+  const minX = PLAY_LEFT + BALL_RADIUS + 2;
+  const maxX = game.kitchenOnlyBallInHand ? CUE_START.x : PLAY_RIGHT - BALL_RADIUS - 2;
+  const minY = PLAY_TOP + BALL_RADIUS + 2;
+  const maxY = PLAY_BOTTOM - BALL_RADIUS - 2;
+
+  // 1. Test preferred position if provided
+  if (preferredX !== undefined && preferredY !== undefined) {
+    const clampedX = Math.max(minX, Math.min(maxX, preferredX));
+    const clampedY = Math.max(minY, Math.min(maxY, preferredY));
+    if (!isCueBallOverlapping(game, clampedX, clampedY)) {
+      return { x: clampedX, y: clampedY };
+    }
+  }
+
+  const startX = preferredX !== undefined ? Math.max(minX, Math.min(maxX, preferredX)) : (minX + maxX) / 2;
+  const startY = preferredY !== undefined ? Math.max(minY, Math.min(maxY, preferredY)) : TABLE_HEIGHT / 2;
+
+  // 2. Spiral search around preferred position
+  const maxRadius = Math.max(TABLE_WIDTH, TABLE_HEIGHT);
+  const stepR = BALL_RADIUS * 1.5;
+  for (let r = stepR; r < maxRadius; r += stepR) {
+    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+      const cx = Math.max(minX, Math.min(maxX, startX + Math.cos(angle) * r));
+      const cy = Math.max(minY, Math.min(maxY, startY + Math.sin(angle) * r));
+      if (!isCueBallOverlapping(game, cx, cy)) {
+        return { x: cx, y: cy };
+      }
+    }
+  }
+
+  // 3. Grid search fallback across allowed table area
+  const gridStepX = Math.max(10, (maxX - minX) / 20);
+  const gridStepY = Math.max(10, (maxY - minY) / 15);
+  for (let x = minX; x <= maxX; x += gridStepX) {
+    for (let y = minY; y <= maxY; y += gridStepY) {
+      if (!isCueBallOverlapping(game, x, y)) {
+        return { x, y };
+      }
+    }
+  }
+
+  return { x: startX, y: startY };
 }
 
 // OFFICIAL 8-BALL TRIANGLE RACK GENERATOR
@@ -276,8 +336,12 @@ export function countGroupBalls(game: GameState, group: Group): number {
 
 export function resetCueBall(game: GameState, kitchenOnly = false) {
   const cue = game.balls[0];
-  cue.x = CUE_START.x;
-  cue.y = CUE_START.y;
+  game.ballInHand = true;
+  game.kitchenOnlyBallInHand = kitchenOnly;
+
+  const validPos = findValidCueBallPosition(game, CUE_START.x, CUE_START.y);
+  cue.x = validPos.x;
+  cue.y = validPos.y;
   cue.vx = 0;
   cue.vy = 0;
   cue.topSpin = 0;
@@ -285,8 +349,6 @@ export function resetCueBall(game: GameState, kitchenOnly = false) {
   cue.pocketed = false;
   cue.pocketAnimProgress = 0;
   cue.fallingPocketIndex = null;
-  game.ballInHand = true;
-  game.kitchenOnlyBallInHand = kitchenOnly;
 }
 
 // ----------------------------------------------------------------------
