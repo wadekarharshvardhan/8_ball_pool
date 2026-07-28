@@ -1325,68 +1325,80 @@ export default function PoolGame3D() {
       `}</style>
 
       {/* ---------------------------------------------------- */}
-      {/* 1. ELEGANT CLASSIC HEADER SCOREBOARD & TOOLBAR       */}
+      {/* 1. 3D SOLID COLORFUL HEADER SCOREBOARD & TOOLBAR    */}
       {/* ---------------------------------------------------- */}
-      <header className="flex flex-col lg:flex-row items-center justify-between gap-3 rounded-2xl bg-[#121824] border border-slate-800 p-3 shadow-md">
+      <header className="flex flex-col lg:flex-row items-center justify-between gap-4 rounded-3xl bg-gradient-to-b from-[#161f30] via-[#111724] to-[#0c101a] border-b-4 border-slate-800/90 p-4 sm:p-5 shadow-2xl">
         
         {/* Player 1 Info Card / Solo Practice Badge */}
         {gameState.gameMode === "practice" ? (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 font-bold">
-              <Target className="w-5 h-5" />
+          <div className="flex items-center gap-3 bg-gradient-to-b from-slate-900 to-slate-950 p-3 rounded-2xl border-b-4 border-slate-800 shadow-lg">
+            <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 border-b-4 border-amber-700 text-slate-950 font-black shadow-md">
+              <Target className="w-6 h-6 stroke-[2.5]" />
             </div>
             <div>
-              <div className="font-extrabold text-white text-sm">Solo Practice Mode</div>
+              <div className="font-extrabold text-white text-base">Solo Practice Mode</div>
               <div className="text-xs text-slate-400 font-medium">
-                Free Direct Play • {gameState.balls.filter((b) => !b.pocketed && b.number !== 0).length} balls left
+                Free Direct Play • <span className="text-amber-400 font-bold">{gameState.balls.filter((b) => !b.pocketed && b.number !== 0).length}</span> balls left
               </div>
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-3 w-full lg:w-auto">
+          <div className="flex items-center gap-3.5 w-full lg:w-auto">
             <div className="relative flex items-center justify-center">
               {gameState.turn === 1 && !gameState.moving && (
-                <svg className="absolute -inset-1 w-13 h-13 transform -rotate-90 pointer-events-none">
-                  <circle cx="26" cy="26" r="17" stroke="#1e293b" strokeWidth="3" fill="transparent" />
+                <svg className="absolute -inset-1.5 w-15 h-15 transform -rotate-90 pointer-events-none z-10">
+                  <circle cx="30" cy="30" r="21" stroke="#1e293b" strokeWidth="4" fill="transparent" />
                   <circle
-                    cx="26"
-                    cy="26"
-                    r="17"
+                    cx="30"
+                    cy="30"
+                    r="21"
                     stroke="#22c55e"
-                    strokeWidth="3"
-                    strokeDasharray="106"
-                    strokeDashoffset={106 * (1 - timerRatio)}
+                    strokeWidth="4"
+                    strokeDasharray="132"
+                    strokeDashoffset={132 * (1 - timerRatio)}
                     className="transition-all duration-1000"
                     fill="transparent"
                   />
                 </svg>
               )}
-              <div className={`flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold ${gameState.turn === 1 ? "ring-2 ring-emerald-500" : "opacity-60"}`}>
-                <User className="w-5 h-5 text-emerald-400" />
+              <div
+                className={`flex items-center justify-center w-12 h-12 rounded-2xl border-b-4 shadow-lg transition-all duration-300 ${
+                  gameState.turn === 1
+                    ? "bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-600 border-emerald-800 text-slate-950 shadow-emerald-950/60 ring-4 ring-emerald-400/40 scale-105"
+                    : "bg-gradient-to-b from-slate-800 to-slate-900 border-slate-700 text-slate-400 opacity-70"
+                }`}
+              >
+                <User className="w-6 h-6 stroke-[2.5]" />
               </div>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-white text-sm">Player 1</span>
+                <span className="font-black text-white text-base tracking-wide">Player 1</span>
                 {gameState.turn === 1 && (
-                  <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30">
+                  <span className="px-2.5 py-0.5 text-xs font-black bg-gradient-to-b from-emerald-400 to-emerald-500 border-b-2 border-emerald-700 text-slate-950 rounded-lg shadow-md animate-pulse">
                     {turnTimer}s
                   </span>
                 )}
               </div>
-              <div className="text-xs text-slate-400 font-medium">
-                Group: <strong className="text-amber-400 capitalize">{gameState.groups[1] ?? "Unassigned"}</strong> ({countGroupBalls(gameState, gameState.groups[1] ?? "solids")} left)
+              <div className="text-xs text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
+                Group:{" "}
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold uppercase text-[11px]">
+                  {gameState.groups[1] ?? "Unassigned"}
+                </span>{" "}
+                (<strong className="text-white">{countGroupBalls(gameState, gameState.groups[1] ?? "solids")}</strong> left)
               </div>
             </div>
           </div>
         )}
 
-        {/* Center Chrome Ball Return Rack */}
-        <div className="flex flex-col items-center gap-1 px-4 py-1 rounded-xl bg-[#0b0e14] border border-slate-800">
-          <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Pocketed Ball Return</div>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-700 min-w-[220px] max-w-[300px] overflow-x-auto">
+        {/* Center 3D Metallic Ball Return Rack */}
+        <div className="flex flex-col items-center gap-1.5 px-6 py-2.5 rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-b-4 border-slate-800 shadow-xl border-t border-slate-700/50">
+          <div className="text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-950/40 px-3 py-0.5 rounded-full border border-amber-500/30 shadow-inner flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-amber-400" /> Pocketed Ball Return
+          </div>
+          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-b from-black via-slate-950 to-slate-900 border-2 border-slate-700/80 shadow-inner min-w-[220px] max-w-[320px] overflow-x-auto">
             {gameState.pocketedHistory.length === 0 ? (
-              <span className="text-xs text-slate-500 italic mx-auto">Rack Empty</span>
+              <span className="text-xs text-slate-500 italic mx-auto font-medium">Rack Empty</span>
             ) : (
               gameState.pocketedHistory.map((num, idx) => {
                 const sprite = ballSpritesRef.current.get(num);
@@ -1394,12 +1406,12 @@ export default function PoolGame3D() {
                 return (
                   <div
                     key={`${num}-${idx}`}
-                    className={`w-5 h-5 rounded-full ring-1 ring-white/30 shrink-0 overflow-hidden ${isLatest ? "animate-roll-in" : ""}`}
+                    className={`w-6 h-6 rounded-full ring-2 ring-white/40 shadow-md shrink-0 overflow-hidden ${isLatest ? "animate-roll-in" : ""}`}
                   >
                     {sprite ? (
                       <img src={sprite.toDataURL()} alt={`Ball ${num}`} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-[9px] text-white font-bold">{num}</span>
+                      <span className="text-[10px] text-white font-bold">{num}</span>
                     )}
                   </div>
                 );
@@ -1409,43 +1421,53 @@ export default function PoolGame3D() {
         </div>
 
         {/* Player 2 Card & Integrated Action Toolbar */}
-        <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
+        <div className="flex items-center gap-4 w-full lg:w-auto justify-end">
           {gameState.gameMode !== "practice" && (
             <>
               <div className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   {gameState.turn === 2 && (
-                    <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30">
+                    <span className="px-2.5 py-0.5 text-xs font-black bg-gradient-to-b from-indigo-400 to-indigo-500 border-b-2 border-indigo-700 text-slate-950 rounded-lg shadow-md animate-pulse">
                       {turnTimer}s
                     </span>
                   )}
-                  <span className="font-extrabold text-white text-sm">
+                  <span className="font-black text-white text-base tracking-wide">
                     {gameState.gameMode === "ai" ? `🤖 Bot (${selectedAIDifficulty.toUpperCase()})` : "Player 2"}
                   </span>
                 </div>
-                <div className="text-xs text-slate-400 font-medium">
-                  Group: <strong className="text-amber-400 capitalize">{gameState.groups[2] ?? "Unassigned"}</strong> ({countGroupBalls(gameState, gameState.groups[2] ?? "stripes")} left)
+                <div className="text-xs text-slate-400 font-medium mt-0.5 flex items-center justify-end gap-1.5">
+                  Group:{" "}
+                  <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold uppercase text-[11px]">
+                    {gameState.groups[2] ?? "Unassigned"}
+                  </span>{" "}
+                  (<strong className="text-white">{countGroupBalls(gameState, gameState.groups[2] ?? "stripes")}</strong> left)
                 </div>
               </div>
               <div className="relative flex items-center justify-center">
                 {gameState.turn === 2 && !gameState.moving && (
-                  <svg className="absolute -inset-1 w-13 h-13 transform -rotate-90 pointer-events-none">
-                    <circle cx="26" cy="26" r="17" stroke="#1e293b" strokeWidth="3" fill="transparent" />
+                  <svg className="absolute -inset-1.5 w-15 h-15 transform -rotate-90 pointer-events-none z-10">
+                    <circle cx="30" cy="30" r="21" stroke="#1e293b" strokeWidth="4" fill="transparent" />
                     <circle
-                      cx="26"
-                      cy="26"
-                      r="17"
-                      stroke="#22c55e"
-                      strokeWidth="3"
-                      strokeDasharray="106"
-                      strokeDashoffset={106 * (1 - timerRatio)}
+                      cx="30"
+                      cy="30"
+                      r="21"
+                      stroke="#6366f1"
+                      strokeWidth="4"
+                      strokeDasharray="132"
+                      strokeDashoffset={132 * (1 - timerRatio)}
                       className="transition-all duration-1000"
                       fill="transparent"
                     />
                   </svg>
                 )}
-                <div className={`flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold ${gameState.turn === 2 ? "ring-2 ring-emerald-500" : "opacity-60"}`}>
-                  <User className="w-5 h-5 text-indigo-400" />
+                <div
+                  className={`flex items-center justify-center w-12 h-12 rounded-2xl border-b-4 shadow-lg transition-all duration-300 ${
+                    gameState.turn === 2
+                      ? "bg-gradient-to-b from-indigo-500 via-indigo-500 to-indigo-600 border-indigo-800 text-white shadow-indigo-950/60 ring-4 ring-indigo-400/40 scale-105"
+                      : "bg-gradient-to-b from-slate-800 to-slate-900 border-slate-700 text-slate-400 opacity-70"
+                  }`}
+                >
+                  {gameState.gameMode === "ai" ? <Bot className="w-6 h-6 stroke-[2.5]" /> : <User className="w-6 h-6 stroke-[2.5]" />}
                 </div>
               </div>
             </>
