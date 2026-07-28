@@ -200,6 +200,9 @@ export default function PoolGame3D() {
   const croppedCueCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [cueSpriteReady, setCueSpriteReady] = useState(false);
 
+  // Menu Music Audio Ref
+  const menuMusicRef = useRef<HTMLAudioElement | null>(null);
+
   useEffect(() => {
     const img = new Image();
     img.src = "/assets/cue_stick.png";
@@ -209,6 +212,43 @@ export default function PoolGame3D() {
       setCueSpriteReady(true);
     };
   }, []);
+
+  // Menu Music Loop Effect: play when on menu, pause when in match or muted
+  useEffect(() => {
+    if (!menuMusicRef.current) {
+      const audio = new Audio("/menu_music.mp3");
+      audio.loop = true;
+      audio.volume = 1.0;
+      menuMusicRef.current = audio;
+    }
+
+    const music = menuMusicRef.current;
+
+    if (!isPlayingMatch && !muted) {
+      // Restart menu music from the beginning
+      music.currentTime = 0;
+      music.play().catch(() => {
+        // Browser autoplay policy: wait for first user interaction
+        const startOnInteraction = () => {
+          if (!isPlayingMatch && !muted && menuMusicRef.current) {
+            menuMusicRef.current.play().catch(() => { });
+          }
+          document.removeEventListener("click", startOnInteraction);
+          document.removeEventListener("keydown", startOnInteraction);
+        };
+        document.addEventListener("click", startOnInteraction);
+        document.addEventListener("keydown", startOnInteraction);
+      });
+    } else {
+      // Pause menu music when in a match or muted
+      music.pause();
+    }
+
+    return () => {
+      // Cleanup: pause when effect re-runs
+      music.pause();
+    };
+  }, [isPlayingMatch, muted]);
 
   // Load custom ball designs
   const loadBallSprites = useCallback((themeId: BallThemeId) => {
@@ -471,7 +511,7 @@ export default function PoolGame3D() {
     const rect = canvas.getBoundingClientRect();
     const cueBall = gameRef.current.balls[0];
     if (cueBall.pocketed || gameRef.current.moving || strikeAnimOffset !== null) return;
-    
+
     // Block human input during Computer Bot's turn (Player 2 in Vs AI mode)
     if (gameRef.current.gameMode === "ai" && gameRef.current.turn === 2) return;
 
@@ -1377,11 +1417,10 @@ export default function PoolGame3D() {
           <div className="absolute top-5 right-5">
             <button
               onClick={() => setMuted(soundEngine.toggleMute())}
-              className={`p-3 sm:p-3.5 rounded-2xl border-b-4 shadow-lg active:border-b-0 active:translate-y-1 transition-all duration-150 flex items-center gap-2 text-xs font-black ${
-                muted
+              className={`p-3 sm:p-3.5 rounded-2xl border-b-4 shadow-lg active:border-b-0 active:translate-y-1 transition-all duration-150 flex items-center gap-2 text-xs font-black ${muted
                   ? "bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-rose-800 text-white shadow-rose-950/40 hover:from-rose-400 hover:to-rose-500"
                   : "bg-gradient-to-b from-emerald-400 via-emerald-400 to-emerald-500 border-emerald-700 text-slate-950 shadow-emerald-950/40 hover:from-emerald-300 hover:to-emerald-400"
-              }`}
+                }`}
             >
               {muted ? <VolumeX className="w-4 h-4 stroke-[2.5]" /> : <Volume2 className="w-4 h-4 stroke-[2.5]" />}
               {muted ? "Muted" : "Sound On"}
@@ -1414,11 +1453,10 @@ export default function PoolGame3D() {
                 soundEngine.playButtonClick();
                 setSelectedGameMode("pvp");
               }}
-              className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-b-4 transition transform hover:-translate-y-1.5 active:border-b-0 active:translate-y-1 shadow-xl ${
-                selectedGameMode === "pvp"
+              className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-b-4 transition transform hover:-translate-y-1.5 active:border-b-0 active:translate-y-1 shadow-xl ${selectedGameMode === "pvp"
                   ? "bg-gradient-to-b from-amber-500/30 via-amber-500/20 to-slate-900 border-amber-500 text-amber-300 ring-2 ring-amber-400/60 shadow-[0_10px_30px_rgba(245,158,11,0.3)]"
                   : "bg-gradient-to-b from-slate-800/90 to-slate-900/90 border-slate-700 text-slate-300 hover:border-slate-500 hover:from-slate-800 hover:to-slate-850"
-              }`}
+                }`}
             >
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 border-b-4 border-amber-700 text-slate-950 shadow-md font-black">
                 <Users className="w-6 h-6 stroke-[2.5]" />
@@ -1432,11 +1470,10 @@ export default function PoolGame3D() {
                 soundEngine.playButtonClick();
                 setSelectedGameMode("practice");
               }}
-              className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-b-4 transition transform hover:-translate-y-1.5 active:border-b-0 active:translate-y-1 shadow-xl ${
-                selectedGameMode === "practice"
+              className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-b-4 transition transform hover:-translate-y-1.5 active:border-b-0 active:translate-y-1 shadow-xl ${selectedGameMode === "practice"
                   ? "bg-gradient-to-b from-emerald-500/30 via-emerald-500/20 to-slate-900 border-emerald-500 text-emerald-300 ring-2 ring-emerald-400/60 shadow-[0_10px_30px_rgba(16,185,129,0.3)]"
                   : "bg-gradient-to-b from-slate-800/90 to-slate-900/90 border-slate-700 text-slate-300 hover:border-slate-500 hover:from-slate-800 hover:to-slate-850"
-              }`}
+                }`}
             >
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-emerald-400 to-emerald-500 border-b-4 border-emerald-700 text-slate-950 shadow-md font-black">
                 <Target className="w-6 h-6 stroke-[2.5]" />
@@ -1450,11 +1487,10 @@ export default function PoolGame3D() {
                 soundEngine.playButtonClick();
                 setSelectedGameMode("ai");
               }}
-              className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-b-4 transition transform hover:-translate-y-1.5 active:border-b-0 active:translate-y-1 shadow-xl ${
-                selectedGameMode === "ai"
+              className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-b-4 transition transform hover:-translate-y-1.5 active:border-b-0 active:translate-y-1 shadow-xl ${selectedGameMode === "ai"
                   ? "bg-gradient-to-b from-indigo-500/30 via-indigo-500/20 to-slate-900 border-indigo-500 text-indigo-300 ring-2 ring-indigo-400/60 shadow-[0_10px_30px_rgba(99,102,241,0.3)]"
                   : "bg-gradient-to-b from-slate-800/90 to-slate-900/90 border-slate-700 text-slate-300 hover:border-slate-500 hover:from-slate-800 hover:to-slate-850"
-              }`}
+                }`}
             >
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-b from-indigo-500 to-indigo-600 border-b-4 border-indigo-800 text-white shadow-md font-black">
                 <Bot className="w-6 h-6 stroke-[2.5]" />
@@ -1478,11 +1514,10 @@ export default function PoolGame3D() {
                     soundEngine.playButtonClick();
                     setSelectedAIDifficulty("easy");
                   }}
-                  className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${
-                    selectedAIDifficulty === "easy"
+                  className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${selectedAIDifficulty === "easy"
                       ? "bg-gradient-to-b from-emerald-400 to-emerald-500 border-emerald-700 text-slate-950 shadow-md"
                       : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
-                  }`}
+                    }`}
                 >
                   🟢 Easy
                 </button>
@@ -1492,11 +1527,10 @@ export default function PoolGame3D() {
                     soundEngine.playButtonClick();
                     setSelectedAIDifficulty("medium");
                   }}
-                  className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${
-                    selectedAIDifficulty === "medium"
+                  className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${selectedAIDifficulty === "medium"
                       ? "bg-gradient-to-b from-amber-400 to-amber-500 border-amber-700 text-slate-950 shadow-md"
                       : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
-                  }`}
+                    }`}
                 >
                   🟡 Medium
                 </button>
@@ -1506,11 +1540,10 @@ export default function PoolGame3D() {
                     soundEngine.playButtonClick();
                     setSelectedAIDifficulty("master");
                   }}
-                  className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${
-                    selectedAIDifficulty === "master"
+                  className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${selectedAIDifficulty === "master"
                       ? "bg-gradient-to-b from-rose-500 to-rose-600 border-rose-800 text-white shadow-md"
                       : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
-                  }`}
+                    }`}
                 >
                   🔴 Master
                 </button>
@@ -1529,11 +1562,10 @@ export default function PoolGame3D() {
                   soundEngine.playButtonClick();
                   setAimAssistLevel("easy");
                 }}
-                className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${
-                  aimAssistLevel === "easy"
+                className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${aimAssistLevel === "easy"
                     ? "bg-gradient-to-b from-emerald-400 to-emerald-500 border-emerald-700 text-slate-950 shadow-md"
                     : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
-                }`}
+                  }`}
               >
                 🟢 Easy
               </button>
@@ -1543,11 +1575,10 @@ export default function PoolGame3D() {
                   soundEngine.playButtonClick();
                   setAimAssistLevel("medium");
                 }}
-                className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${
-                  aimAssistLevel === "medium"
+                className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${aimAssistLevel === "medium"
                     ? "bg-gradient-to-b from-amber-400 to-amber-500 border-amber-700 text-slate-950 shadow-md"
                     : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
-                }`}
+                  }`}
               >
                 🟡 Medium
               </button>
@@ -1557,11 +1588,10 @@ export default function PoolGame3D() {
                   soundEngine.playButtonClick();
                   setAimAssistLevel("hard");
                 }}
-                className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${
-                  aimAssistLevel === "hard"
+                className={`py-2 px-3 rounded-xl border-b-4 font-bebas text-lg font-normal tracking-wide transition flex items-center justify-center gap-1.5 ${aimAssistLevel === "hard"
                     ? "bg-gradient-to-b from-rose-500 to-rose-600 border-rose-800 text-white shadow-md"
                     : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
-                }`}
+                  }`}
               >
                 🔴 Hard
               </button>
@@ -1577,6 +1607,21 @@ export default function PoolGame3D() {
             START GAME
           </button>
         </div>
+
+        {/* Bottom Right Developer Credit (Clean pure text link, no icon or box) */}
+        <a
+          href="https://wharshvardhan.vercel.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => soundEngine.playButtonClick()}
+          className="fixed bottom-3 right-4 z-50 text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors drop-shadow-md"
+          title="Visit WADEKARHARSHVARDHAN Portfolio"
+        >
+          Designed & Developed by{" "}
+          <span className="font-bebas font-normal text-amber-400 text-sm tracking-wider hover:underline">
+            WADEKARHARSHVARDHAN
+          </span>
+        </a>
       </div>
     );
   }
@@ -1618,7 +1663,7 @@ export default function PoolGame3D() {
       {/* 1. 3D SOLID COLORFUL HEADER SCOREBOARD & TOOLBAR    */}
       {/* ---------------------------------------------------- */}
       <header className="flex flex-col gap-2 rounded-2xl bg-gradient-to-b from-[#182338] via-[#121929] to-[#0d121f] border-b-4 border-slate-800/90 p-2.5 sm:p-3 shadow-xl overflow-hidden">
-        
+
         {/* Row 1: Player Scorecards & Pocketed Ball Return Rack */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 w-full">
           {/* Player 1 Info Card / Solo Practice Badge */}
@@ -1654,11 +1699,10 @@ export default function PoolGame3D() {
                   </svg>
                 )}
                 <div
-                  className={`flex items-center justify-center w-10 h-10 rounded-xl border-b-4 shadow-lg transition-all duration-300 ${
-                    gameState.turn === 1
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl border-b-4 shadow-lg transition-all duration-300 ${gameState.turn === 1
                       ? "bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-600 border-emerald-800 text-slate-950 shadow-emerald-950/60 ring-4 ring-emerald-400/40 scale-105"
                       : "bg-gradient-to-b from-slate-800 to-slate-900 border-slate-700 text-slate-400 opacity-70"
-                  }`}
+                    }`}
                 >
                   <User className="w-5 h-5 stroke-[2.5]" />
                 </div>
@@ -1698,9 +1742,8 @@ export default function PoolGame3D() {
                   return (
                     <div
                       key={`${num}-${idx}`}
-                      className={`w-7.5 h-7.5 sm:w-8 sm:h-8 rounded-full ring-2 ring-white/50 shadow-xl shrink-0 overflow-hidden relative group transform transition-transform ${
-                        isLatest ? "animate-roll-in" : "hover:scale-110"
-                      }`}
+                      className={`w-7.5 h-7.5 sm:w-8 sm:h-8 rounded-full ring-2 ring-white/50 shadow-xl shrink-0 overflow-hidden relative group transform transition-transform ${isLatest ? "animate-roll-in" : "hover:scale-110"
+                        }`}
                     >
                       {sprite ? (
                         <img src={sprite.toDataURL()} alt={`Ball ${num}`} className="w-full h-full object-cover" />
@@ -1754,11 +1797,10 @@ export default function PoolGame3D() {
                   </svg>
                 )}
                 <div
-                  className={`flex items-center justify-center w-10 h-10 rounded-xl border-b-4 shadow-lg transition-all duration-300 ${
-                    gameState.turn === 2
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl border-b-4 shadow-lg transition-all duration-300 ${gameState.turn === 2
                       ? "bg-gradient-to-b from-indigo-500 via-indigo-500 to-indigo-600 border-indigo-800 text-white shadow-indigo-950/60 ring-4 ring-indigo-400/40 scale-105"
                       : "bg-gradient-to-b from-slate-800 to-slate-900 border-slate-700 text-slate-400 opacity-70"
-                  }`}
+                    }`}
                 >
                   {gameState.gameMode === "ai" ? <Bot className="w-5 h-5 stroke-[2.5]" /> : <User className="w-5 h-5 stroke-[2.5]" />}
                 </div>
@@ -1783,11 +1825,10 @@ export default function PoolGame3D() {
 
           <button
             onClick={() => setMuted(soundEngine.toggleMute())}
-            className={`p-2.5 sm:p-3 rounded-2xl border-b-4 shadow-lg active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5 text-xs font-black px-3.5 ${
-              muted
+            className={`p-2.5 sm:p-3 rounded-2xl border-b-4 shadow-lg active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5 text-xs font-black px-3.5 ${muted
                 ? "bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-rose-800 text-white shadow-rose-950/40 hover:from-rose-400 hover:to-rose-500"
                 : "bg-gradient-to-b from-emerald-400 via-emerald-400 to-emerald-500 border-emerald-700 text-slate-950 shadow-emerald-950/40 hover:from-emerald-300 hover:to-emerald-400"
-            }`}
+              }`}
             title="Toggle Sound"
           >
             {muted ? <VolumeX className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" /> : <Volume2 className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />}
@@ -1847,13 +1888,12 @@ export default function PoolGame3D() {
 
           {/* Read-Only Aim Assist Status Indicator Badge (Locked during match) */}
           <div
-            className={`p-2.5 sm:p-3 rounded-2xl border-b-4 shadow-lg flex items-center justify-center gap-1.5 text-xs font-black px-3.5 cursor-default ${
-              aimAssistLevel === "easy"
+            className={`p-2.5 sm:p-3 rounded-2xl border-b-4 shadow-lg flex items-center justify-center gap-1.5 text-xs font-black px-3.5 cursor-default ${aimAssistLevel === "easy"
                 ? "bg-gradient-to-b from-emerald-400 via-emerald-400 to-emerald-500 border-emerald-700 text-slate-950 shadow-emerald-950/40"
                 : aimAssistLevel === "medium"
-                ? "bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-amber-700 text-slate-950 shadow-amber-950/40"
-                : "bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-rose-800 text-white shadow-rose-950/40"
-            }`}
+                  ? "bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-amber-700 text-slate-950 shadow-amber-950/40"
+                  : "bg-gradient-to-b from-rose-500 via-rose-500 to-rose-600 border-rose-800 text-white shadow-rose-950/40"
+              }`}
             title={`Aim Assist Level: ${aimAssistLevel.toUpperCase()} (Selected before match start)`}
           >
             <Zap className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.5]" />
@@ -2047,8 +2087,17 @@ export default function PoolGame3D() {
           {gameState.message}
         </div>
 
-        <div className="text-slate-400 text-[11px] font-medium">
-          Aim: <span className="text-white">Click Ball / Aim Wheel</span> • Shoot: <span className="text-amber-400">Pull & Release Cue</span>
+        <div className="flex items-center gap-3 text-slate-400 text-[11px] font-medium">
+          <div>Aim: <span className="text-white">Click Ball / Aim Wheel</span> • Shoot: <span className="text-amber-400">Pull & Release Cue</span></div>
+          <a
+            href="https://wharshvardhan.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => soundEngine.playButtonClick()}
+            className="text-[11px] font-bold text-slate-300 hover:text-amber-400 transition"
+          >
+            By <span className="font-bebas font-normal text-amber-400 text-xs tracking-wider hover:underline">WADEKARHARSHVARDHAN</span>
+          </a>
         </div>
       </footer>
 
@@ -2056,14 +2105,13 @@ export default function PoolGame3D() {
       {confirmModalState !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md select-none">
           <div className="w-full max-w-md rounded-[2.5rem] bg-gradient-to-b from-[#182338] via-[#121929] to-[#0d121f] border-b-8 border-r-4 border-slate-800 p-6 sm:p-8 text-white space-y-6 shadow-[0_30px_90px_rgba(0,0,0,0.9)] text-center relative border-t border-slate-700/60">
-            
+
             {/* Warning Icon Badge */}
             <div
-              className={`mx-auto flex items-center justify-center w-20 h-20 rounded-3xl border-b-6 text-slate-950 shadow-2xl ${
-                confirmModalState === "reset"
+              className={`mx-auto flex items-center justify-center w-20 h-20 rounded-3xl border-b-6 text-slate-950 shadow-2xl ${confirmModalState === "reset"
                   ? "bg-gradient-to-b from-sky-400 via-sky-400 to-sky-500 border-sky-700 shadow-sky-950/60"
                   : "bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-amber-700 shadow-amber-950/60"
-              }`}
+                }`}
             >
               {confirmModalState === "menu" ? (
                 <HomeIcon className="w-10 h-10 stroke-[2.5]" />
@@ -2075,9 +2123,8 @@ export default function PoolGame3D() {
             {/* Title & Warning Text */}
             <div className="space-y-2">
               <h3
-                className={`font-bebas font-normal text-3xl sm:text-4xl tracking-wider drop-shadow-md ${
-                  confirmModalState === "reset" ? "text-sky-400" : "text-amber-400"
-                }`}
+                className={`font-bebas font-normal text-3xl sm:text-4xl tracking-wider drop-shadow-md ${confirmModalState === "reset" ? "text-sky-400" : "text-amber-400"
+                  }`}
               >
                 {confirmModalState === "menu" ? "Return To Main Menu?" : "Reset Current Match?"}
               </h3>
@@ -2109,11 +2156,10 @@ export default function PoolGame3D() {
                     handleStartMatch();
                   }
                 }}
-                className={`py-3 px-4 rounded-2xl border-b-4 text-slate-950 font-bebas font-normal text-2xl tracking-wider shadow-lg active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 ${
-                  confirmModalState === "reset"
+                className={`py-3 px-4 rounded-2xl border-b-4 text-slate-950 font-bebas font-normal text-2xl tracking-wider shadow-lg active:border-b-0 active:translate-y-1 transition-all duration-150 transform hover:-translate-y-0.5 ${confirmModalState === "reset"
                     ? "bg-gradient-to-b from-sky-400 via-sky-400 to-sky-500 border-sky-700 hover:from-sky-300 hover:to-sky-400 shadow-sky-950/40"
                     : "bg-gradient-to-b from-amber-400 via-amber-400 to-amber-500 border-amber-700 hover:from-amber-300 hover:to-amber-400 shadow-amber-950/40"
-                }`}
+                  }`}
               >
                 Yes
               </button>
@@ -2213,7 +2259,7 @@ export default function PoolGame3D() {
               {gameState.gameMode === "practice" ? "RACK CLEARED!" : `PLAYER ${gameState.winner} WINS!`}
             </h2>
             <p className="text-xs text-slate-300 font-medium leading-relaxed">{gameState.message}</p>
-            
+
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 onClick={handleReturnToMenu}
